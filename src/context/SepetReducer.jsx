@@ -1,5 +1,5 @@
 export const initialState = {
-    SepetNesneleri: [],
+    SepetNesneleri: JSON.parse(localStorage.getItem("sepet")) || [],
 }
 
 export function SepetReducer(state, action) {
@@ -34,6 +34,14 @@ export function SepetReducer(state, action) {
                 SepetNesneleri: state.SepetNesneleri.map((item) =>
                     item.id === id ? { ...item, miktar: item.miktar - 1 } : item)
                     .filter((item) => item.miktar > 0),
+            }
+        }
+
+        case "SEPETTEMIZLE": {
+            const id = action.payload;
+            return {
+                ...state,
+                SepetNesneleri: state.SepetNesneleri.filter((item) => item.id !== id),
             }
         }
         default:

@@ -20,9 +20,12 @@ export default function SepetNesneleri({ item }) {
                 <button onClick={() => dispatch({ type: "SEPETEEKLE", payload: item })} className="text-[#388e3c] font-bold hover:text-[#1b5e20]">+</button>
             </div>
 
-            <button onClick={() => dispatch({ type: "SEPETTEMIZLE", payload: item.id })} className="text-[#d84315] text-xl hover:text-[#bf360c] transition-colors">
-                <i className="fa-solid fa-trash"></i>
+            <button
+                onClick={() => dispatch({ type: "SEPETTEMIZLE", payload: item.id })}
+                className="p-3 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-all duration-300 cursor-pointer group/trash">
+                <i className="bx bx-trash text-2xl group-hover/trash:rotate-12 group-hover/trash:scale-110 transition-transform"></i>
             </button>
         </div>
+
     )
 }
