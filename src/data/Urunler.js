@@ -1,42 +1,11 @@
+import Pembe from "../assets/resimler/pembe.png"
+import Bordo from "../assets/resimler/bordo.png"
+import suluk from "../assets/resimler/suluk.png"
+import proteintozu from "../assets/resimler/proteintozu.png"
+
 export const urunler = [
-  {
-    id: 1,
-    isim: "Kablosuz Kulaklık",
-    kategori: "Elektronik",
-    fiyat: 1299,
-    resim: "/images/kulaklik.jpg",
-    createdAt: "2026-03-20",
-  },
-  {
-    id: 2,
-    isim: "Mekanik Klavye",
-    kategori: "Bilgisayar",
-    fiyat: 1899,
-    resim: "/images/klavye.jpg",
-    createdAt: "2026-03-18",
-  },
-  {
-    id: 3,
-    isim: "Gaming Mouse",
-    kategori: "Bilgisayar",
-    fiyat: 799,
-    resim: "/images/mouse.jpg",
-    createdAt: "2026-03-15",
-  },
-  {
-    id: 4,
-    isim: "Sırt Çantası",
-    kategori: "Aksesuar",
-    fiyat: 699,
-    resim: "/images/canta.jpg",
-    createdAt: "2026-03-10",
-  },
-  {
-    id: 5,
-    isim: "USB Çoklayıcı",
-    kategori: "Elektronik",
-    fiyat: 349,
-    resim: "/images/coklayici.jpg",
-    createdAt: "2026-03-05",
-  },
-];
+    { id: 1, resim: Pembe, isim: "Rose Quartz", renk: "Pembe", fiyat: 300 },
+    { id: 2, resim: Bordo, isim: "Royal Queen", renk: "Bordo", fiyat: 350 },
+    { id: 3, resim: suluk, isim: "Suluk", renk: "Mavi", fiyat: 250 },
+    { id: 4, resim: proteintozu, isim: "Whey 3Matrix Protein Tozu", renk: "Siyah", fiyat: 800 },
+]
