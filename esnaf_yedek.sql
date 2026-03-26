@@ -1,4 +1,3 @@
-
 CREATE TABLE public.sehir (
     id SERIAL PRIMARY KEY,
     sehir_adi VARCHAR(100) NOT NULL
@@ -6,14 +5,15 @@ CREATE TABLE public.sehir (
 
 CREATE TABLE public.kategori (
     id SERIAL PRIMARY KEY,
-    kategori_adi VARCHAR(100) NOT NULL
+    kategori_adi VARCHAR(100) NOT NULL,
+    aktif_mi BOOLEAN DEFAULT true 
 );
-
 
 CREATE TABLE public.alt_kategori (
     id SERIAL PRIMARY KEY,
     ana_kategori_id INTEGER NOT NULL REFERENCES public.kategori(id) ON DELETE CASCADE,
-    alt_kategori_adi VARCHAR(100) NOT NULL
+    alt_kategori_adi VARCHAR(100) NOT NULL,
+    aktif_mi BOOLEAN DEFAULT true
 );
 
 CREATE TABLE public.yonetim_hesaplari (
@@ -22,7 +22,6 @@ CREATE TABLE public.yonetim_hesaplari (
     sifre TEXT NOT NULL,
     rol VARCHAR(20) DEFAULT 'editor'
 );
-
 
 CREATE TABLE public.musteri (
     id SERIAL PRIMARY KEY,
@@ -39,9 +38,9 @@ CREATE TABLE public.adres (
     musteri_id INTEGER REFERENCES public.musteri(id) ON DELETE CASCADE,
     sehir_id INTEGER REFERENCES public.sehir(id),
     adres_basligi VARCHAR(50),
-    tam_adres TEXT NOT NULL
+    tam_adres TEXT NOT NULL,
+    posta_kodu VARCHAR(10) 
 );
-
 
 CREATE TABLE public.urun (
     id SERIAL PRIMARY KEY,
@@ -59,7 +58,6 @@ CREATE TABLE public.urun_gorsel (
     ana_gorsel_mi BOOLEAN DEFAULT false
 );
 
-
 CREATE TABLE public.yorum (
     id SERIAL PRIMARY KEY,
     urun_id INTEGER REFERENCES public.urun(id) ON DELETE CASCADE,
@@ -73,7 +71,8 @@ CREATE TABLE public.sepet_detay (
     id SERIAL PRIMARY KEY,
     musteri_id INTEGER REFERENCES public.musteri(id) ON DELETE CASCADE,
     urun_id INTEGER REFERENCES public.urun(id) ON DELETE CASCADE,
-    adet INTEGER DEFAULT 1 CHECK (adet > 0)
+    adet INTEGER DEFAULT 1 CHECK (adet > 0),
+    urun_ozellikleri_json JSONB 
 );
 
 CREATE TABLE public.siparis (
