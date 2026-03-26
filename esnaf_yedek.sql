@@ -68,11 +68,9 @@ CREATE TABLE public.yorum (
 );
 
 CREATE TABLE public.sepet_detay (
-    id SERIAL PRIMARY KEY,
-    musteri_id INTEGER REFERENCES public.musteri(id) ON DELETE CASCADE,
-    urun_id INTEGER REFERENCES public.urun(id) ON DELETE CASCADE,
-    adet INTEGER DEFAULT 1 CHECK (adet > 0),
-    urun_ozellikleri_json JSONB 
+    musteri_id UUID PRIMARY KEY,
+    sepet_icerigi JSONB NOT NULL DEFAULT '[]'::jsonb, 
+    guncelleme_tarihi TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE public.siparis (
