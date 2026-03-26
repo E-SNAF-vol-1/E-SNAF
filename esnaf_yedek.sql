@@ -68,7 +68,7 @@ CREATE TABLE public.yorum (
 );
 
 CREATE TABLE public.sepet_detay (
-    musteri_id UUID PRIMARY KEY,
+    musteri_id INTEGER PRIMARY KEY REFERENCES public.musteri(id) ON DELETE CASCADE,
     sepet_icerigi JSONB NOT NULL DEFAULT '[]'::jsonb, 
     guncelleme_tarihi TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
