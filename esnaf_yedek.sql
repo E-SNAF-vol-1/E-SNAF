@@ -48,7 +48,8 @@ CREATE TABLE public.urun (
     urun_adi VARCHAR(200) NOT NULL,
     aciklama TEXT,
     fiyat NUMERIC(10,2) NOT NULL CHECK (fiyat >= 0),
-    stok_adedi INTEGER DEFAULT 0 CHECK (stok_adedi >= 0)
+    stok_adedi INTEGER DEFAULT 0 CHECK (stok_adedi >= 0),
+    eklenme_tarihi TIMESTAMP DEFAULT CURRENT_TIMESTAMP --siralama icin
 );
 
 CREATE TABLE public.urun_gorsel (
