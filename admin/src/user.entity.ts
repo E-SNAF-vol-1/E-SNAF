@@ -3,9 +3,13 @@ import {
   Column,
   PrimaryGeneratedColumn,
   CreateDateColumn,
+  OneToMany, 
 } from 'typeorm';
 
-@Entity('musteri')
+import { Adres } from './adres.entity'; 
+import { Siparis } from './siparis.entity';
+
+@Entity('musteri') 
 export class User {
   @PrimaryGeneratedColumn()
   id: number;
@@ -27,4 +31,14 @@ export class User {
 
   @CreateDateColumn()
   kayit_tarihi: Date;
+
+  
+
+  
+  @OneToMany(() => Adres, (adres) => adres.musteri)
+  adresler: Adres[];
+
+  
+  @OneToMany(() => Siparis, (siparis) => siparis.musteri)
+  siparisler: Siparis[];
 }
