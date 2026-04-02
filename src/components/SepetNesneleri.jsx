@@ -2,6 +2,12 @@ import { useSepet } from '../context/SepetContext.jsx'
 
 export default function SepetNesneleri({ item }) {
     const { dispatch } = useSepet()
+
+    // Açıklamayı 20 karakter ile sınırla
+    const kisaAciklama = item.aciklama
+        ? (item.aciklama.length > 20 ? item.aciklama.substring(0, 20) + "..." : item.aciklama)
+        : "Açıklama bulunmuyor";
+
     return (
         <div className="flex items-center gap-6 p-4 border-b border-[#d2b48c] hover:bg-[#f9f7f4] transition-colors duration-200">
             <div className="w-24 h-24 flex items-center justify-center bg-[#ede6ca] rounded-lg">
@@ -9,9 +15,12 @@ export default function SepetNesneleri({ item }) {
             </div>
 
             <div className="flex-1">
+                {/* Ürün Adı */}
                 <h3 className="font-bold text-lg text-[#5d4037]">{item.isim}</h3>
-                <p className="text-sm text-gray-500">Renk: {item.renk}</p>
-                <p className="font-semibold text-[#8d6e63]">{item.fiyat} TL</p>
+                {/* 20 Karakter Sınırlı Açıklama */}
+                <p className="text-sm text-gray-500 italic">{kisaAciklama}</p>
+                {/* Fiyat Bilgisi */}
+                <p className="font-semibold text-[#8d6e63] mt-1">{item.fiyat} TL</p>
             </div>
 
             <div className="flex items-center gap-3 bg-[#ede6ca] px-3 py-2 rounded-lg">
@@ -26,6 +35,5 @@ export default function SepetNesneleri({ item }) {
                 <i className="bx bx-trash text-2xl group-hover/trash:rotate-12 group-hover/trash:scale-110 transition-transform"></i>
             </button>
         </div>
-
     )
 }

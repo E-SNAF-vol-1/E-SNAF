@@ -1,41 +1,45 @@
-import { useSepet } from '../context/SepetContext.jsx'
+import { useSepet } from "../context/SepetContext.jsx"
 
 export default function SepetOzeti() {
-    const { state } = useSepet();
-    const { SepetNesneleri } = state;
-    const ToplamUrun = SepetNesneleri.reduce((sum, item) => sum + item.miktar, 0)
-    const toplam = SepetNesneleri.reduce((sum, item) => sum + item.fiyat * item.miktar, 0)
-    const kargo = 39.99;
-    const sonfiyat = toplam + kargo;
+    const navigate = useNavigate();
+    const { state } = useSepet()
+    const urunler = state.SepetNesneleri || []
 
+    // Toplam fiyatı hesapla
+    const toplamFiyat = urunler.reduce((toplam, urun) => toplam + (urun.fiyat * urun.miktar), 0)
+    const kargoUcreti = toplamFiyat > 500 ? 0 : 50 // Örnek: 500 TL üzeri kargo bedava
 
     return (
-        <div className="bg-[#ede6ca] p-6 rounded-lg border border-[#d2b48c]">
-            <h2 className="text-2xl font-bold text-[#5d4037] mb-4">Sipariş Özeti</h2>
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-[#ede6ca]">
+            <h3 className="text-xl font-bold text-[#4d3a2e] mb-6">Sipariş Özeti</h3>
 
-            <div className="space-y-3 mb-4 border-b border-[#d2b48c] pb-4">
-                <div className="flex justify-between text-[#5d4037]">
-                    <span>Toplam Ürün:</span>
-                    <span className="font-semibold">{ToplamUrun}</span>
+            <div className="space-y-4">
+                <div className="flex justify-between text-gray-600">
+                    <span>Ara Toplam</span>
+                    <span>{toplamFiyat.toFixed(2)} TL</span>
                 </div>
-                <div className="flex justify-between text-[#5d4037]">
-                    <span>Alt Toplam:</span>
-                    <span className="font-semibold">{toplam.toFixed(2)} TL</span>
+                <div className="flex justify-between text-gray-600">
+                    <span>Kargo</span>
+                    <span>{kargoUcreti === 0 ? "Ücretsiz" : kargoUcreti + " TL"}</span>
                 </div>
-                <div className="flex justify-between text-[#5d4037]">
-                    <span>Kargo Ücreti:</span>
-                    <span className="font-semibold">{kargo.toFixed(2)} TL</span>
+                <div className="border-t border-[#ede6ca] pt-4 flex justify-between font-bold text-xl text-[#4d3a2e]">
+                    <span>Toplam</span>
+                    <span>{(toplamFiyat + kargoUcreti).toFixed(2)} TL</span>
                 </div>
             </div>
 
-            <div className="flex justify-between text-lg font-bold text-[#8d6e63] mb-6">
-                <span>Toplam:</span>
-                <span>{sonfiyat.toFixed(2)} TL</span>
-            </div>
-
-            <button className="w-full bg-[#8d6e63] text-[#f5f5dc] py-3 rounded-lg font-bold hover:bg-[#5d4037] transition-colors duration-300">
-                Satın Al
+            <button
+                onClick={() => navigate("/odeme")} // Tıklayınca ödeme sayfasına git
+                className="w-full mt-8 py-4 bg-[#4d3a2e] text-white rounded-xl font-bold hover:bg-[#3d2e25] transition-colors shadow-lg"
+            >
+                Alışverişi Tamamla
             </button>
+
+            {kargoUcreti > 0 && (
+                <p className="text-xs text-[#978175] mt-4 text-center">
+                    {(500 - toplamFiyat).toFixed(2)} TL daha ekleyin, kargo bedava olsun!
+                </p>
+            )}
         </div>
     )
 }

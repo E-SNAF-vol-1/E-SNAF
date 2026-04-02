@@ -1,13 +1,14 @@
 import SepetOzeti from "../components/SepetOzeti"
 import { useNavigate } from "react-router-dom"
 import { useSepet } from "../context/SepetContext.jsx"
-import SepetKartı from "../components/SepetNesneleri" //SeperNesneleri yerine bir takma isim verdik çakışma olmasın diye
+import SepetKartı from "../components/SepetNesneleri"
 
 export default function Sepet() {
     const yonlendirme = useNavigate()
     const { state } = useSepet()
-    const urunListesi = state.SepetNesneleri || []
+    const urunListesi = Array.isArray(state.SepetNesneleri) ? state.SepetNesneleri : []
 
+    // Veri tabanından veri çekilirken veya sepet boşken kontrol
     if (urunListesi.length === 0) {
         return (
             <div className="p-8 bg-[#fdfbf7] min-h-screen flex flex-col items-center justify-center">
@@ -23,7 +24,7 @@ export default function Sepet() {
         <div className="p-8 bg-[#fdfbf7] min-h-screen">
             <div className="mb-8 max-w-6xl mx-auto">
                 <h1 onClick={() => yonlendirme("/")} className="text-[#978175] cursor-pointer hover:text-[#4d3a2e] mb-2 transition-colors">
-                    <i class="bx bx-arrow-big-left" /> Anasayfaya Dön
+                    <i className="bx bx-arrow-big-left" /> Anasayfaya Dön
                 </h1>
                 <h2 className="text-4xl font-serif font-bold text-[#4d3a2e]">Sepetiniz</h2>
             </div>
@@ -36,6 +37,7 @@ export default function Sepet() {
                 </div>
 
                 <div className="h-fit sticky top-8">
+                    {/* Sepet özeti buradaki listeden beslenir */}
                     <SepetOzeti />
                 </div>
             </div>
