@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import { Controller, Get, Post, Body, Res, Param, UploadedFiles, UseInterceptors } from '@nestjs/common';
+import { Controller, Get, Post, Body, Res, Param, UploadedFiles, UseInterceptors, ParseIntPipe } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './user.entity';
@@ -14,6 +14,10 @@ import { AltKategori } from './alt_kategori.entity';
 import { ProductService } from './product.service';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
+import { SiparisService } from './siparis.service';
+import { Siparis } from './siparis.entity';
+
+
 
 const CSS_STYLES = `
   * {
@@ -460,9 +464,11 @@ export class AdminController {
     @InjectRepository(Admin) private adminRepo: Repository<Admin>,
     @InjectRepository(Product) private productRepo: Repository<Product>,
     @InjectRepository(Kategori) private kategoriRepo: Repository<Kategori>,
+    @InjectRepository(Siparis) private siparisRepo: Repository<Siparis>,
     @InjectRepository(AltKategori)
     private altKategoriRepo: Repository<AltKategori>,
     private productService: ProductService,
+    private siparisService: SiparisService,
   ) {}
 
   @Get()
@@ -490,6 +496,15 @@ export class AdminController {
       </body>
       </html>
     `;
+  }
+  @Get('siparisler/:id')
+  async getSiparisDetay(@Param('id', ParseIntPipe) id: number) {
+    
+    return this.siparisService.getSiparisDetayiAdmin(id);
+  }
+  @Get('siparisler')
+  async getSiparisler() {
+    return await this.siparisService.findAll(); 
   }
 
   @Post('login')
