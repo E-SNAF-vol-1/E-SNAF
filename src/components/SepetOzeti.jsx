@@ -1,4 +1,5 @@
 import { useSepet } from "../context/SepetContext.jsx"
+import { useNavigate } from "react-router-dom";
 
 export default function SepetOzeti() {
     const navigate = useNavigate();

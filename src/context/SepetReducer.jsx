@@ -1,5 +1,4 @@
 export const initialState = {
-    // LocalStorage'dan veri çekerken hata payını sıfırlıyoruz
     SepetNesneleri: Array.isArray(JSON.parse(localStorage.getItem("sepet")))
         ? JSON.parse(localStorage.getItem("sepet"))
         : [],
@@ -7,30 +6,43 @@ export const initialState = {
 
 export function SepetReducer(state, action) {
     switch (action.type) {
-        // VT'den gelen veriyi güvenli bir şekilde state'e aktarır
         case "SEPET_YUKLE": {
+            // Veritabanından gelen verilerdeki isimlendirmeyi standartlaştırıyoruz
+            const yuklenenSepet = Array.isArray(action.payload)
+                ? action.payload.map(item => ({
+                    ...item,
+                    isim: item.isim || item.urun_adi || item.ad || "İsimsiz Ürün"
+                }))
+                : [];
             return {
                 ...state,
-                SepetNesneleri: Array.isArray(action.payload) ? action.payload : []
+                SepetNesneleri: yuklenenSepet
             };
         }
 
         case "SEPETEEKLE": {
             const item = action.payload;
-            const mevcutNesne = state.SepetNesneleri.find((urun) => urun.id === item.id);
 
-            if (mevcutNesne) {
-                return {
-                    ...state,
-                    SepetNesneleri: state.SepetNesneleri.map((urun) =>
-                        urun.id === item.id ? { ...urun, miktar: (urun.miktar || 0) + 1 } : urun
-                    )
-                }
+            // Ekleme anında ismi garanti altına alıyoruz
+            const yeniNesne = {
+                ...item,
+                isim: item.isim || item.urun_adi || item.ad || "İsimsiz Ürün"
+            };
+
+            const mevcutNesneIndex = state.SepetNesneleri.findIndex((urun) => urun.id === yeniNesne.id);
+
+            if (mevcutNesneIndex !== -1) {
+                const yeniSepet = [...state.SepetNesneleri];
+                yeniSepet[mevcutNesneIndex] = {
+                    ...yeniSepet[mevcutNesneIndex],
+                    miktar: (yeniSepet[mevcutNesneIndex].miktar || 0) + 1
+                };
+                return { ...state, SepetNesneleri: yeniSepet };
             } else {
                 return {
                     ...state,
-                    SepetNesneleri: [...state.SepetNesneleri, { ...item, miktar: 1 }]
-                }
+                    SepetNesneleri: [...state.SepetNesneleri, { ...yeniNesne, miktar: 1 }]
+                };
             }
         }
 
