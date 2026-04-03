@@ -1,86 +1,83 @@
-import React, { useState, useEffect } from 'react';
-import { useSepet } from '../context/SepetContext.jsx'
+import React from 'react';
 
-export default function DetayKarti({ urun }) {
-    // Ana görselin hafızası artık kartın kendi içinde tutuluyor
-    const [anaGorsel, setAnaGorsel] = useState("");
-    const { dispatch } = useSepet();
+const DetayKarti = ({ urun }) => {
+  const { urun_adi, aciklama, fiyat, resim, kategori, alt_kategori } = urun;
 
-    // DÜZELTME BURADA: payload kısmına "item" değil, "urun" veriyoruz!
-    const handleSepeteEkle = () => {
-        dispatch({ type: "SEPETEEKLE", payload: urun });
-    };
-
-    // Ürün bilgisi geldiğinde ana görseli varsayılan resim yapıyoruz
-    useEffect(() => {
-        if (urun) {
-            setAnaGorsel(urun.resim);
-        }
-    }, [urun]);
-
-    const resmiDegistir = (src) => {
-        const el = document.getElementById('anaGorsel');
-        if (el) {
-            el.animate([
-                { opacity: '0.4', filter: 'brightness(1.3)' },
-                { opacity: '1', filter: 'brightness(1)' }
-            ], { duration: 300 });
-        }
-        setAnaGorsel(src);
-    };
-
-    return (
-        <div className="bg-white rounded-[2.5rem] shadow-2xl overflow-hidden grid grid-cols-1 lg:grid-cols-2 max-h-[90vh]">
-
-            {/* Sol: Görsel Galerisi */}
-            <div className="p-6 flex flex-col md:flex-row gap-6 bg-white overflow-hidden">
-                <div className="flex md:flex-col gap-3 order-2 md:order-1 justify-center">
-                    {/* Küçük Resim */}
-                    <img
-                        onClick={() => resmiDegistir(urun.resim)}
-                        src={urun.resim}
-                        alt="Ürün Küçültülmüş Görsel"
-                        className={`w-16 h-20 object-contain p-2 rounded-xl border-2 cursor-pointer transition-all ${anaGorsel === urun.resim ? 'border-orange-500' : 'border-transparent'}`}
-                    />
-                </div>
-
-                <div className="flex-1 bg-white rounded-3xl flex items-center justify-center overflow-hidden relative">
-                    <img
-                        id="anaGorsel"
-                        src={anaGorsel}
-                        alt={urun.isim || urun.ad}
-                        className="w-full h-full max-h-[400px] object-contain p-6 transition-transform duration-500 hover:scale-110"
-                    />
-                </div>
-            </div>
-
-            {/* Sağ: Dinamik Ürün Bilgileri */}
-            <div className="p-10 lg:p-12 flex flex-col justify-center">
-                <span className="text-orange-600 font-bold text-[10px] uppercase tracking-[0.2em] bg-orange-50 px-3 py-1 rounded-md w-fit">
-                    {urun.kategori}
-                </span>
-
-                <h2 className="text-3xl font-black text-slate-900 mt-2 leading-tight">
-                    {urun.ad || urun.isim}
-                </h2>
-
-                <div className="flex items-baseline gap-2 mb-4 mt-2">
-                    <span className="text-2xl font-bold text-slate-900">{urun.fiyat} TL</span>
-                </div>
-
-                <p className="text-slate-600 text-sm leading-relaxed border-t pt-4">
-                    {urun.aciklama}
-                </p>
-
-                {/* Sepete Ekle Butonu */}
-                <button
-                    onClick={handleSepeteEkle}
-                    className="mt-6 bg-slate-900 text-white py-4 rounded-2xl font-bold hover:bg-orange-600 transition-all active:scale-95 shadow-xl cursor-pointer"
-                >
-                    Sepete Ekle
-                </button>
-            </div>
-
+  return (
+    // max-w-5xl yaparak sayfayı ortada daha dar bir alana topladık
+    <div className="max-w-5xl mx-auto px-6 py-10">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-10 items-start">
+        
+        {/* SOL: ÜRÜN GÖRSELİ (12 sütundan 5'ini kaplıyor - %40 civarı) */}
+        <div className="md:col-span-5 bg-white rounded-2xl p-2 shadow-sm border border-stone-100 sticky top-28">
+          <img 
+            src={resim || "https://via.placeholder.com/400"} 
+            alt={urun_adi} 
+            className="w-full h-auto object-cover rounded-xl"
+          />
+          <div className="absolute top-6 left-6 bg-[#5d4037] text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider">
+            YENİ SEZON
+          </div>
         </div>
-    );
-}
+
+        {/* SAĞ: ÜRÜN DETAYLARI (12 sütundan 7'sini kaplıyor) */}
+        <div className="md:col-span-7 flex flex-col gap-5">
+          {/* Kategori */}
+          <div>
+            <span className="text-[10px] font-bold tracking-widest text-[#8d7763] uppercase bg-[#f8f5eb] px-2 py-0.5 rounded">
+              {kategori} / {alt_kategori}
+            </span>
+            <h1 className="text-3xl font-bold text-[#2b241a] mt-2 leading-tight">
+              {urun_adi}
+            </h1>
+          </div>
+
+          {/* Fiyat */}
+          <div className="flex items-baseline gap-3">
+            <span className="text-3xl font-black text-[#5d4037]">{fiyat} TL</span>
+            <span className="text-sm text-stone-400 line-through">{(fiyat * 1.15).toFixed(0)} TL</span>
+          </div>
+
+          {/* Açıklama - Daha küçük yazı tipi (text-sm) */}
+          <div className="border-t border-stone-100 pt-4">
+            <h3 className="text-sm font-bold text-[#2b241a] mb-2 uppercase tracking-wide">Ürün Detayları</h3>
+            <div 
+              className="text-stone-600 text-sm leading-relaxed"
+              dangerouslySetInnerHTML={{ __html: aciklama }} 
+            />
+          </div>
+
+          {/* Butonlar - Daha az padding (py-3) */}
+          <div className="flex gap-3 mt-4">
+            <button className="flex-[4] bg-[#5d4037] text-white py-3.5 rounded-xl font-bold text-md hover:bg-[#3e2b25] transition-all active:scale-95 flex items-center justify-center gap-2 shadow-md">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+              </svg>
+              Sepete Ekle
+            </button>
+            <button className="flex-1 bg-white border border-stone-200 text-stone-400 py-3.5 rounded-xl hover:text-red-500 transition-all flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Bilgi Kartları - Daha küçük kutular */}
+          <div className="grid grid-cols-2 gap-3 mt-2">
+            <div className="py-2.5 px-3 bg-stone-50 rounded-xl border border-stone-100 flex items-center gap-2">
+              <span className="text-lg">🚚</span>
+              <p className="text-[9px] font-bold text-stone-500 uppercase tracking-tighter">Aynı Gün Kargo</p>
+            </div>
+            <div className="py-2.5 px-3 bg-stone-50 rounded-xl border border-stone-100 flex items-center gap-2">
+              <span className="text-lg">🛡️</span>
+              <p className="text-[9px] font-bold text-stone-500 uppercase tracking-tighter">Resmi Garantili</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+};
+
+export default DetayKarti;
