@@ -14,7 +14,10 @@ interface ImageInput {
   ana_gorsel_mi?: boolean;
 }
 
+type ImageBucket = 'buyuk' | 'orta' | 'kucuk';
+
 interface ImageVariantDefinition {
+  folder: ImageBucket;
   label: string;
   width: number | null;
   height: number | null;
@@ -32,11 +35,33 @@ export class ProductService {
     private readonly dataSource: DataSource,
   ) {}
 
+  private readonly imageFolders: ImageBucket[] = ['buyuk', 'orta', 'kucuk'];
+
   private readonly imageVariants: ImageVariantDefinition[] = [
-    { label: '110x110', width: 110, height: 110, fit: 'cover' },
-    { label: '180px', width: 1200, height: 180, fit: 'contain', background: { r: 255, g: 255, b: 255, alpha: 0 } },
-    { label: '400px', width: 1600, height: 400, fit: 'contain', background: { r: 255, g: 255, b: 255, alpha: 0 } },
-    { label: '64x80', width: 64, height: 80, fit: 'contain', background: { r: 255, g: 255, b: 255, alpha: 0 } },
+    {
+      folder: 'buyuk',
+      label: '400px',
+      width: 1600,
+      height: 400,
+      fit: 'contain',
+      background: { r: 255, g: 255, b: 255, alpha: 0 },
+    },
+    {
+      folder: 'orta',
+      label: '180px',
+      width: 1200,
+      height: 180,
+      fit: 'contain',
+      background: { r: 255, g: 255, b: 255, alpha: 0 },
+    },
+    {
+      folder: 'kucuk',
+      label: '110x110',
+      width: 110,
+      height: 110,
+      fit: 'contain',
+      background: { r: 255, g: 255, b: 255, alpha: 0 },
+    },
   ];
 
   async create(productData: Partial<Product>): Promise<Product> {
@@ -153,29 +178,70 @@ export class ProductService {
       .replace(/^-+|-+$/g, '') || 'urun';
   }
 
-  private async ensureUploadsDir(): Promise<string> {
-    const dir = path.join(process.cwd(), 'uploads', 'products');
-    await fs.mkdir(dir, { recursive: true });
-    return dir;
+  private async ensureUploadsDirs(): Promise<Record<ImageBucket, string>> {
+    const baseDir = path.join(process.cwd(), 'uploads', 'products');
+    const dirs = {
+      buyuk: path.join(baseDir, 'buyuk'),
+      orta: path.join(baseDir, 'orta'),
+      kucuk: path.join(baseDir, 'kucuk'),
+    } satisfies Record<ImageBucket, string>;
+
+    await Promise.all(
+      Object.values(dirs).map((dir) => fs.mkdir(dir, { recursive: true })),
+    );
+
+    return dirs;
   }
 
-  private getPublicImagePath(filename: string): string {
-    return `/uploads/products/${filename}`;
+  private getPublicImagePath(folder: ImageBucket, filename: string): string {
+    return `/uploads/products/${folder}/${filename}`;
   }
 
   private getDiskPathFromPublicPath(publicPath: string): string | null {
     if (!publicPath?.startsWith('/uploads/products/')) {
       return null;
     }
-    return path.join(
-      process.cwd(),
-      'uploads',
-      'products',
-      publicPath.replace('/uploads/products/', ''),
-    );
+
+    const relativePath = publicPath
+      .replace('/uploads/products/', '')
+      .replace(/\//g, path.sep);
+
+    return path.join(process.cwd(), 'uploads', 'products', relativePath);
+  }
+
+  private extractVariantBaseName(publicPath: string): string | null {
+    const diskPath = this.getDiskPathFromPublicPath(publicPath);
+    if (!diskPath) {
+      return null;
+    }
+
+    const parsed = path.parse(diskPath);
+    return parsed.name;
   }
 
   private async deletePhysicalImage(publicPath: string): Promise<void> {
+    const baseName = this.extractVariantBaseName(publicPath);
+
+    if (baseName) {
+      await Promise.all(
+        this.imageVariants.map(async (variant) => {
+          const diskPath = path.join(
+            process.cwd(),
+            'uploads',
+            'products',
+            variant.folder,
+            `${baseName}.webp`,
+          );
+          try {
+            await fs.unlink(diskPath);
+          } catch {
+            // dosya zaten silinmiş olabilir
+          }
+        }),
+      );
+      return;
+    }
+
     const diskPath = this.getDiskPathFromPublicPath(publicPath);
     if (!diskPath) return;
     try {
@@ -188,22 +254,24 @@ export class ProductService {
   private buildWatermarkSvg(width: number, height: number): Buffer {
     const safeWidth = Math.max(width, 64);
     const safeHeight = Math.max(height, 64);
-    const fontSize = Math.max(14, Math.round(Math.min(safeWidth, safeHeight) * 0.12));
-    const x = Math.round(safeWidth / 2);
-    const y = Math.round(safeHeight / 2 + fontSize / 3);
+    const fontSize = Math.max(
+      14,
+      Math.round(Math.min(safeWidth, safeHeight) * 0.12),
+    );
     const svg = `
       <svg width="${safeWidth}" height="${safeHeight}" xmlns="http://www.w3.org/2000/svg">
         <text
-          x="${x}"
-          y="${y}"
+          x="50%"
+          y="50%"
           text-anchor="middle"
+          dominant-baseline="middle"
           font-family="Arial, Helvetica, sans-serif"
           font-size="${fontSize}"
           font-weight="700"
           fill="rgba(255,255,255,0.34)"
           stroke="rgba(0,0,0,0.22)"
           stroke-width="1"
-        >e-snaf.com</text>
+        >e_snaf</text>
       </svg>
     `;
     return Buffer.from(svg);
@@ -214,10 +282,8 @@ export class ProductService {
     outputPath: string,
     variant: ImageVariantDefinition,
   ): Promise<void> {
-    const baseImage = sharp(inputBuffer, { failOn: 'none' }).rotate();
-    const metadata = await baseImage.metadata();
-    const targetWidth = variant.width ?? metadata.width ?? 1200;
-    const targetHeight = variant.height ?? metadata.height ?? 400;
+    const targetWidth = variant.width ?? 1200;
+    const targetHeight = variant.height ?? 400;
 
     await sharp(inputBuffer, { failOn: 'none' })
       .rotate()
@@ -232,7 +298,7 @@ export class ProductService {
       .composite([
         {
           input: this.buildWatermarkSvg(targetWidth, targetHeight),
-          gravity: 'centre',
+          gravity: 'center',
         },
       ])
       .webp({ quality: 90 })
@@ -255,34 +321,38 @@ export class ProductService {
       return [];
     }
 
-    const uploadsDir = await this.ensureUploadsDir();
-    const existingGroups = Math.floor((product.images?.length || 0) / this.imageVariants.length);
+    const uploadDirs = await this.ensureUploadsDirs();
+    const existingCount = product.images?.length || 0;
     const baseName = this.slugify(product.urun_adi || `urun-${productId}`);
     const created: ProductImage[] = [];
 
     for (let i = 0; i < files.length; i++) {
-      const sira = existingGroups + i + 1;
+      const sira = existingCount + i + 1;
+      const variantBaseName = `${baseName}-${sira}`;
 
-      for (let variantIndex = 0; variantIndex < this.imageVariants.length; variantIndex++) {
-        const variant = this.imageVariants[variantIndex];
-        const fileName = `${baseName}-${sira}-${variant.label}.webp`;
-        const outputPath = path.join(uploadsDir, fileName);
-
+      for (const variant of this.imageVariants) {
+        const fileName = `${variantBaseName}.webp`;
+        const outputPath = path.join(uploadDirs[variant.folder], fileName);
         await this.createVariantImage(files[i].buffer, outputPath, variant);
-
-        const image = await this.addImage(
-          productId,
-          this.getPublicImagePath(fileName),
-          existingGroups === 0 && i === 0 && variantIndex === 0,
-        );
-        created.push(image);
       }
+
+      const dbFileName = `${variantBaseName}.webp`;
+
+      const image = await this.addImage(
+        productId,
+        this.getPublicImagePath('orta', dbFileName),
+        existingCount === 0 && i === 0,
+      );
+      created.push(image);
     }
 
     return created;
   }
 
-  async renameImageFile(imageId: number, yeniAd: string): Promise<ProductImage> {
+  async renameImageFile(
+    imageId: number,
+    yeniAd: string,
+  ): Promise<ProductImage> {
     const image = await this.productImageRepository.findOne({
       where: { id: imageId },
     });
@@ -290,26 +360,40 @@ export class ProductService {
       throw new Error(`${imageId} ID'li görsel bulunamadı`);
     }
 
-    const diskPath = this.getDiskPathFromPublicPath(image.gorsel_yolu);
-    if (!diskPath) {
+    const baseName = this.extractVariantBaseName(image.gorsel_yolu);
+    if (!baseName) {
       throw new Error('Görsel dosya yolu geçersiz');
     }
 
-    const ext = path.extname(diskPath) || '.webp';
-    const dir = path.dirname(diskPath);
-    const currentStem = path.basename(diskPath, ext);
-    const matchedVariant = this.imageVariants.find((variant) =>
-      currentStem.endsWith(`-${variant.label}`),
-    );
-    const suffix = matchedVariant ? `-${matchedVariant.label}` : '';
-    const safeName = `${this.slugify(yeniAd)}${suffix}`;
-    const newDiskPath = path.join(dir, `${safeName}${ext}`);
+    const oldPrefix = path.join(process.cwd(), 'uploads', 'products');
+    const safeName = this.slugify(yeniAd);
 
-    if (diskPath !== newDiskPath) {
-      await fs.rename(diskPath, newDiskPath);
+    for (const variant of this.imageVariants) {
+      const oldDiskPath = path.join(
+        oldPrefix,
+        variant.folder,
+        `${baseName}.webp`,
+      );
+      const newDiskPath = path.join(
+        oldPrefix,
+        variant.folder,
+        `${safeName}.webp`,
+      );
+
+      try {
+        if (oldDiskPath !== newDiskPath) {
+          await fs.rename(oldDiskPath, newDiskPath);
+        }
+      } catch {
+        // bazı varyant dosyaları eksik olabilir
+      }
     }
 
-    const updatedPublicPath = this.getPublicImagePath(`${safeName}${ext}`);
+    const updatedPublicPath = this.getPublicImagePath(
+      'orta',
+      `${safeName}.webp`,
+    );
+
     await this.productImageRepository.update(imageId, {
       gorsel_yolu: updatedPublicPath,
     });
@@ -370,7 +454,6 @@ export class ProductService {
       return await this.productImageRepository.save(retryImage);
     }
   }
-
 
   async addMultipleImages(
     productId: number,

@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import { Controller, Get, Post, Body, Res, Param, UploadedFiles, UseInterceptors, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Res, Param, UploadedFiles, UseInterceptors } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './user.entity';
@@ -14,10 +14,6 @@ import { AltKategori } from './alt_kategori.entity';
 import { ProductService } from './product.service';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
-import { SiparisService } from './siparis.service';
-import { Siparis } from './siparis.entity';
-
-
 
 const CSS_STYLES = `
   * {
@@ -464,11 +460,9 @@ export class AdminController {
     @InjectRepository(Admin) private adminRepo: Repository<Admin>,
     @InjectRepository(Product) private productRepo: Repository<Product>,
     @InjectRepository(Kategori) private kategoriRepo: Repository<Kategori>,
-    @InjectRepository(Siparis) private siparisRepo: Repository<Siparis>,
     @InjectRepository(AltKategori)
     private altKategoriRepo: Repository<AltKategori>,
     private productService: ProductService,
-    private siparisService: SiparisService,
   ) {}
 
   @Get()
@@ -496,15 +490,6 @@ export class AdminController {
       </body>
       </html>
     `;
-  }
-  @Get('siparisler/:id')
-  async getSiparisDetay(@Param('id', ParseIntPipe) id: number) {
-    
-    return this.siparisService.getSiparisDetayiAdmin(id);
-  }
-  @Get('siparisler')
-  async getSiparisler() {
-    return await this.siparisService.findAll(); 
   }
 
   @Post('login')
@@ -844,7 +829,7 @@ export class AdminController {
 
                   const meta = document.createElement('div');
                   meta.className = 'meta';
-                  meta.textContent = 'Hazır varyantlar: 110x110, 180px, 400px, 64x80 + e-snaf.com filigranı';
+                  meta.textContent = 'Klasör seçimi piksel boyutuna göre otomatik';
 
                   const removeButton = document.createElement('button');
                   removeButton.type = 'button';
@@ -994,7 +979,7 @@ export class AdminController {
                 <img src="${img.gorsel_yolu}" style="width: 100%; height: 120px; object-fit: cover; border-radius: 5px; margin-bottom: 10px;">
                 <div style="font-size: 12px; color: #666; margin-bottom: 8px;">
                   <strong>ID:</strong> ${img.id}<br>
-                  <strong>Adı:</strong> ${(() => { const fileName = (img.gorsel_yolu || '').split('/').pop() || 'İsimsiz'; return fileName.replace(/\.[^/.]+$/, ''); })()}<br><strong>Boyut etiketi:</strong> ${(() => { const fileName = (img.gorsel_yolu || '').split('/').pop() || ''; const cleanName = fileName.replace(/\.[^/.]+$/, ''); const match = cleanName.match(/-(110x110|180px|400px|64x80)$/); return match ? match[1] : 'standart'; })()}
+                  <strong>Adı:</strong> ${(() => { const fileName = (img.gorsel_yolu || '').split('/').pop() || 'İsimsiz'; return fileName.replace(/\.[^/.]+$/, ''); })()}
                 </div>
                 ${img.ana_gorsel_mi ? '<span style="background: #27ae60; color: white; padding: 3px 8px; border-radius: 3px; font-size: 11px; font-weight: bold;">ANA GÖRSEL</span>' : ''}
                 <div style="margin-top: 8px; display: flex; flex-direction: column; gap: 5px;">
@@ -1114,7 +1099,7 @@ export class AdminController {
                     <span class="upload-meta">Yeni seçim yaptığında önceki seçtiklerin silinmez, üstüne eklenir.</span>
                   </div>
                   <input type="file" id="edit-images" name="images" multiple accept="image/*" style="display:none;">
-                  <small style="color: #666; display: block; margin-top: 5px;">💡 Birden fazla görsel seçebilirsiniz. Her görsel ürün adına göre 4 farklı varyant halinde kaydedilir: 110x110, 180px, 400px ve 64x80. Her varyantta e-snaf.com filigranı bulunur.</small>
+                  <small style="color: #666; display: block; margin-top: 5px;">💡 Birden fazla görsel seçebilirsiniz. Her görsel piksel boyutuna göre büyük / orta / küçük klasörüne kaydedilir ve veritabanına tek yol yazılır.</small>
                   <div id="edit-image-preview" class="preview-grid"></div>
                 </div>
               </div>
@@ -1294,7 +1279,7 @@ export class AdminController {
 
                   const meta = document.createElement('div');
                   meta.className = 'meta';
-                  meta.textContent = 'Hazır varyantlar: 110x110, 180px, 400px, 64x80 + e-snaf.com filigranı';
+                  meta.textContent = 'Klasör seçimi piksel boyutuna göre otomatik';
 
                   const removeButton = document.createElement('button');
                   removeButton.type = 'button';
