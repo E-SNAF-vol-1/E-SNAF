@@ -26,16 +26,17 @@ export class SiparisController {
   }
 
   // 3. Sipariş Detayı Görüntüleme
-  // GET http://localhost:3000/siparis/detay/5
+  // GET http://localhost:3000/siparis/detay/:id
   @Get('detay/:id')
   async getDetail(@Param('id') id: number) {
     return await this.siparisService.findOne(id);
   }
 
   // 4. Sipariş Durumu Güncelleme (Admin Paneli İçin)
-  // POST http://localhost:3000/siparis/guncelle/5
+  // POST http://localhost:3000/siparis/guncelle/:id
   @Post('guncelle/:id')
-  async update(@Param('id') id: number, @Body() body: { durum: string; kargoNo?: string }) {
-    return await this.siparisService.updateStatus(id, body.durum, body.kargoNo);
+  async update(@Param('id') id: number, @Body('durum') durum: string) {
+    // Servis tarafındaki yeni updateStatus metoduna uygun olarak sadece durum gönderiyoruz
+    return await this.siparisService.updateStatus(id, durum);
   }
 }
