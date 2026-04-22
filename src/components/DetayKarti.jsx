@@ -36,7 +36,7 @@ const DetayKarti = ({ urun }) => {
       payload: eklenecekUrun
     });
 
-    // 2. Kraliçem, sepete eklendi bildirimini tetikliyoruz
+    // 2. Sepete eklendi bildirimini tetikliyoruz
     if (bildirimiGoster) {
       bildirimiGoster(eklenecekUrun);
     }

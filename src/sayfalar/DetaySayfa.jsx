@@ -10,7 +10,7 @@ const DetaySayfa = () => {
 
   useEffect(() => {
     setYukleniyor(true);
-   fetch(`http://localhost:3000/api/products/${id}`) 
+    fetch(`http://localhost:3000/api/products/${id}`)
       .then(res => {
         if (!res.ok) {
           throw new Error(`Sunucu hatası: ${res.status}`);
@@ -30,10 +30,10 @@ const DetaySayfa = () => {
   }, [id]);
 
   if (yukleniyor) return <div className="p-10 text-center text-xl">Ürün yükleniyor...</div>;
-  
+
   // Eğer hata varsa beyaz ekran yerine hatayı görelim:
   if (hata) return <div className="p-10 text-center text-red-500 font-bold">Hata: {hata}</div>;
-  
+
   if (!urun) return <div className="p-10 text-center">Ürün bulunamadı.</div>;
 
   return (

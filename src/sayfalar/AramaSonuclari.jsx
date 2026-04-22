@@ -1,5 +1,4 @@
 import { useLocation } from "react-router-dom";
-import { urunler } from "../data/Urunler";
 import UrunKartlari from "../components/UrunKartlari";
 
 export default function AramaSonuclari() {

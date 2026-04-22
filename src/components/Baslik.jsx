@@ -53,10 +53,10 @@ export default function Baslik() {
 
           {/* Sağ Menü Butonları */}
           <div className="flex items-center gap-2">
-            
+
             {/* HESABIM BUTONU - ARTIK ÇALIŞIYOR */}
-            <div 
-              className={buttonStyle} 
+            <div
+              className={buttonStyle}
               onClick={() => {
                 console.log("Giriş sayfasına yönlendiriliyor...");
                 navigate("/giris-yap");
@@ -64,11 +64,6 @@ export default function Baslik() {
             >
               <i className="bx bx-user text-xl"></i>
               <span className="hidden lg:inline">Hesabım</span>
-            </div>
-
-            <div className={buttonStyle}>
-              <i className="bx bx-heart text-xl"></i>
-              <span className="hidden lg:inline">Favorilerim</span>
             </div>
 
             <div

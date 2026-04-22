@@ -3,7 +3,7 @@ const router = express.Router();
 const controller = require("../controllers/orderController");
 const { requireUser, requireAdmin } = require("../middleware/authMiddleware");
 
-router.post("/", requireUser, controller.createOrder);
+router.post("/", controller.createOrder);
 router.get("/my", requireUser, controller.getMyOrders);
 router.get("/my/:id", requireUser, controller.getMyOrderDetail);
 

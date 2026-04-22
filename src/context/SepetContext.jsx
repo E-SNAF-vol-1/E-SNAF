@@ -2,12 +2,18 @@ import { createContext, useContext, useReducer, useEffect, useState } from "reac
 import { SepetReducer, initialState } from "./SepetReducer";
 import axios from "axios";
 
+// 1. Merkezi Axios Yapılandırması
+const api = axios.create({
+    baseURL: "http://localhost:3000/api",
+    headers: {
+        "Content-Type": "application/json"
+    }
+});
+
 const SepetContext = createContext();
 
 export function SepetProvider({ children }) {
     const [state, dispatch] = useReducer(SepetReducer, initialState);
-
-    // Bildirim penceresi için gerekli state tanımlaması
     const [bildirim, setBildirim] = useState({ gorunur: false, mesaj: "", resim: "" });
 
     // Kullanıcıya işlemin başarılı olduğunu bildiren fonksiyon
@@ -18,7 +24,6 @@ export function SepetProvider({ children }) {
             resim: urun.resim
         });
 
-        // Bildirimin 3 saniye sonra ekrandan nazikçe ayrılması sağlanır
         setTimeout(() => {
             setBildirim({ gorunur: false, mesaj: "", resim: "" });
         }, 3000);
@@ -27,13 +32,27 @@ export function SepetProvider({ children }) {
     // Sayfa yüklendiğinde mevcut sepet verilerinin getirilmesi
     useEffect(() => {
         const sepetiGetir = async () => {
-            try {
-                const response = await axios.get("/api/cart");
-                if (response.data) {
-                    dispatch({ type: "SEPET_YUKLE", payload: response.data });
+            const token = localStorage.getItem("token");
+
+            // Eğer kullanıcı giriş yapmışsa verileri sunucudan çek
+            if (token) {
+                try {
+                    const response = await api.get("/cart", {
+                        headers: { Authorization: `Bearer ${token}` }
+                    });
+                    if (response.data) {
+                        dispatch({ type: "SEPET_YUKLE", payload: response.data });
+                        return; // Sunucudan geldiyse yereli kontrol etmeye gerek yok
+                    }
+                } catch (err) {
+                    console.error("Sepet sunucudan alınamadı, yerel depolama devrede.");
                 }
-            } catch (err) {
-                console.error("Sepet verileri yerel depolamadan kullanılıyor.", err);
+            }
+
+            // Misafir veya sunucu hatası durumunda yerel depolamayı kontrol et
+            const yerelSepet = localStorage.getItem("sepet");
+            if (yerelSepet) {
+                dispatch({ type: "SEPET_YUKLE", payload: JSON.parse(yerelSepet) });
             }
         };
         sepetiGetir();
@@ -45,19 +64,22 @@ export function SepetProvider({ children }) {
         const cerezOnayi = localStorage.getItem("cerezOnayi");
         const token = localStorage.getItem("token");
 
+        // 1. Cihaz değişse de aynı kalsın (Giriş yapanlar için) veya Misafir için yerel kayıt
         if (cerezOnayi === "kabul") {
             localStorage.setItem("sepet", JSON.stringify(sepetVerisi));
         }
 
+        // 2. Sunucu Senkronizasyonu (Sadece Giriş Yapmış Kullanıcılar İçin)
         const sepetiKaydet = async () => {
             try {
-                await axios.post("/api/cart/save", { sepet: sepetVerisi });
+                await api.post("/cart/save", { sepet: sepetVerisi }, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
             } catch (err) {
                 console.log("Sunucu senkronizasyonu şu an gerçekleştirilemiyor.");
             }
         };
 
-        // Veritabanı kaydı yalnızca oturum açmış kullanıcılar için gerçekleştirilir
         if (sepetVerisi.length > 0 && token) {
             sepetiKaydet();
         }
