@@ -731,7 +731,7 @@ export class AdminController {
           
           <div id="orders" class="tab-content">
             <h2>📋 Sipariş Takibi</h2>
-            <p class="empty">🚀 Bu özellik yakında aktif olacaktır.</p>
+            <div id="main-content"></div>
           </div>
           
           <div id="stock" class="tab-content">
@@ -755,6 +755,9 @@ export class AdminController {
             });
             document.getElementById(tabName).classList.add('active');
             event.target.classList.add('active');
+            if (tabName === 'orders') {
+              showSiparisler();
+            }
           }
 
           function syncEditor(editorId, inputId) {
@@ -799,6 +802,9 @@ export class AdminController {
               syncEditor(editorId, inputId);
             });
           }
+          
+          
+
 
           function bindMultiImagePicker(inputId, previewId) {
             const input = document.getElementById(inputId);
@@ -894,8 +900,37 @@ export class AdminController {
             }
           }
 
+          
+
           bindRichEditor('form[action="/Admin/create-product"]', 'add-description-editor', 'add-description-input');
           bindMultiImagePicker('images', 'image-preview');
+          async function showSiparisler() {
+            const content = document.getElementById('main-content');
+            content.innerHTML = '<div class="card"><h2 style="margin-bottom:20px;">📋 Sipariş Takibi</h2><div style="overflow-x:auto;"><table style="width:100%; border-collapse: collapse;"><thead><tr style="background: #f8f9fa;"><th style="padding:12px; border:1px solid #ddd;">No</th><th style="padding:12px; border:1px solid #ddd;">Müşteri / Misafir</th><th style="padding:12px; border:1px solid #ddd;">Tutar</th><th style="padding:12px; border:1px solid #ddd;">Durum</th></tr></thead><tbody id="siparis-list-body"><tr><td colspan="4" style="text-align:center; padding:20px;">Yükleniyor...</td></tr></tbody></table></div></div>';
+            try {
+              const res = await fetch('/api/orders/admin/all');
+              const data = await res.json();
+              const tbody = document.getElementById('siparis-list-body');
+              if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:20px;">Henüz sipariş yok.</td></tr>';
+                return;
+              }
+              tbody.innerHTML = data.map(s => {
+                let isim = "Kayıtlı Üye";
+                if (s.notlar && s.notlar.startsWith('Misafir:')) {
+                  const parts = s.notlar.split(' - ' );
+                  if (parts.length >= 1) {
+                    isim = parts[0].replace('Misafir: ', '' );
+                  }
+                } else if (s.ad && s.soyad) {
+                  isim = s.ad + " " + s.soyad;
+                }
+                return '<tr><td style="padding:12px; border:1px solid #ddd;">#' + s.id + '</td><td style="padding:12px; border:1px solid #ddd;">' + isim + '</td><td style="padding:12px; border:1px solid #ddd;">' + s.toplam_tutar + ' TL</td><td style="padding:12px; border:1px solid #ddd;">' + s.durum + '</td></tr>';
+              }).join('' );
+            } catch (err) {
+              document.getElementById('siparis-list-body').innerHTML = '<tr><td colspan="4" style="text-align:center; color:red; padding:20px;">Veri çekilemedi!</td></tr>';
+            }
+          }
         </script>
       </body>
       </html>
