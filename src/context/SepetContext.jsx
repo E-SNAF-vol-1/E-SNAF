@@ -4,7 +4,7 @@ import axios from "axios";
 
 // 1. Merkezi Axios Yapılandırması
 const api = axios.create({
-    baseURL: "http://localhost:3000/api",
+    baseURL: "https://esnaf.apps.srv.aykutdurgut.com.tr/api",
     headers: {
         "Content-Type": "application/json"
     }

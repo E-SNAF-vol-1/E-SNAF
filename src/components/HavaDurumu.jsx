@@ -35,7 +35,7 @@ export default function HavaDurumu() {
   const veriGetir = async (lat, lon) => {
     try {
       const res = await fetch(
-        `http://localhost:3000/api/weather?lat=${lat}&lon=${lon}`
+        `https://esnaf.apps.srv.aykutdurgut.com.tr/api/weather?lat=${lat}&lon=${lon}`
       );
 
       const data = await res.json();

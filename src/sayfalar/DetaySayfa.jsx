@@ -10,7 +10,7 @@ const DetaySayfa = () => {
 
   useEffect(() => {
     setYukleniyor(true);
-    fetch(`http://localhost:3000/api/products/${id}`)
+    fetch(`https://esnaf.apps.srv.aykutdurgut.com.tr/api/products/${id}`)
       .then(res => {
         if (!res.ok) {
           throw new Error(`Sunucu hatası: ${res.status}`);

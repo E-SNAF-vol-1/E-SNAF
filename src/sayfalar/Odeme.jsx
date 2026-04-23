@@ -6,7 +6,7 @@ import axios from "axios";
 import SiparisBasarili from "../components/SiparisBasarili.jsx";
 
 const api = axios.create({
-    baseURL: "http://localhost:3000/api",
+    baseURL: "https://esnaf.apps.srv.aykutdurgut.com.tr/api",
     withCredentials: true,
     headers: { "Content-Type": "application/json" }
 });
