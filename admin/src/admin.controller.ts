@@ -906,9 +906,10 @@ export class AdminController {
           bindMultiImagePicker('images', 'image-preview');
           async function showSiparisler() {
             const content = document.getElementById('main-content');
-            content.innerHTML = '<div class="card"><h2 style="margin-bottom:20px;">📋 Sipariş Takibi</h2><div style="overflow-x:auto;"><table style="width:100%; border-collapse: collapse;"><thead><tr style="background: #f8f9fa;"><th style="padding:12px; border:1px solid #ddd;">No</th><th style="padding:12px; border:1px solid #ddd;">Müşteri / Misafir</th><th style="padding:12px; border:1px solid #ddd;">Tutar</th><th style="padding:12px; border:1px solid #ddd;">Durum</th></tr></thead><tbody id="siparis-list-body"><tr><td colspan="4" style="text-align:center; padding:20px;">Yükleniyor...</td></tr></tbody></table></div></div>';
+            content.innerHTML = '<div class="card"><h2 style="margin-bottom:20px;"><div style="overflow-x:auto;"><table style="width:100%; border-collapse: collapse;"><thead><tr style="background: #f8f9fa;"><th style="padding:12px; border:1px solid #ddd;">No</th><th style="padding:12px; border:1px solid #ddd;">Müşteri / Misafir</th><th style="padding:12px; border:1px solid #ddd;">Tutar</th><th style="padding:12px; border:1px solid #ddd;">Durum</th></tr></thead><tbody id="siparis-list-body"><tr><td colspan="4" style="text-align:center; padding:20px;">Yükleniyor...</td></tr></tbody></table></div></div>';
             try {
-              const res = await fetch('/api/orders/admin/all');
+              const res = await fetch('/siparis/liste');
+              if (!res.ok) throw new Error('Sipariş verisi çekilemedi');
               const data = await res.json();
               const tbody = document.getElementById('siparis-list-body');
               if (data.length === 0) {
