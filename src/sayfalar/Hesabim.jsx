@@ -323,8 +323,8 @@ const MENU = [
   { id: "favoriler",   ad: "Favorilerim",       ikon: "bx bx-heart" },
   { id: "adresler",    ad: "Adreslerim",        ikon: "bx bx-map" },
   { id: "stok_alarm",  ad: "Stok Alarm Listem", ikon: "bx bx-bell" },
-  { id: "havale",      ad: "Havale Bildirimi",  ikon: "bx bx-transfer" },
-  { id: "fiyat_alarm", ad: "Fiyat Alarm Listem",ikon: "bx bx-money" }
+  { id: "havale",      ad: "Havale Bildirimi",  ikon: "bx bx-credit-card" },
+  { id: "fiyat_alarm", ad: "Fiyat Alarm Listem",ikon: "bx bx-trending-down" }
 ];
 
 const SEHIRLER = [
@@ -385,8 +385,8 @@ function Dashboard({ onSecim, onSiparisTakipAc }) {
     { id: "favoriler",   ikon: "bx bx-heart",     ad: "FAVORİLERİM" },
     { id: "adresler",    ikon: "bx bx-map",       ad: "ADRESLERİM" },
     { id: "stok_alarm",  ikon: "bx bx-bell",      ad: "STOK ALARM LİSTEM" },
-    { id: "havale",      ikon: "bx bx-transfer",  ad: "HAVALE BİLDİRİMİ" },
-    { id: "fiyat_alarm", ikon: "bx bx-money",     ad: "FİYAT ALARM LİSTEM" }
+    { id: "havale",      ikon: "bx bx-credit-card",  ad: "HAVALE BİLDİRİMİ" },
+    { id: "fiyat_alarm", ikon: "bx bx-trending-down", ad: "FİYAT ALARM LİSTEM" }
   ];
 
   return (
