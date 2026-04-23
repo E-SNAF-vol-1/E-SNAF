@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const session = require("express-session");
+const path = require("path");
 require("dotenv").config();
 
 const authRoutes = require("./routes/authRoutes");
@@ -9,11 +10,27 @@ const productRoutes = require("./routes/productRoutes");
 const cartRoutes = require("./routes/cartRoutes");
 const orderRoutes = require("./routes/orderRoutes");
 const addressRoutes = require("./routes/addressRoutes");
-const app = express();
 const weatherRoutes = require("./routes/weatherRoutes");
+const pool = require("./db");
+
+const app = express();
+
 console.log("weatherRoutes yüklendi");
+
+const allowedOrigins = [
+  "http://localhost:4200",
+  "http://localhost:5173",
+  process.env.CLIENT_URL
+].filter(Boolean);
+
 app.use(cors({
-  origin: process.env.CLIENT_URL,
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("CORS hatası: " + origin));
+    }
+  },
   credentials: true
 }));
 
@@ -30,6 +47,8 @@ app.use(session({
   }
 }));
 
+app.use("/uploads", express.static(path.join(__dirname, "../admin/uploads")));
+
 app.get("/", (req, res) => {
   res.json({ mesaj: "E-SNAF API çalışıyor" });
 });
@@ -41,13 +60,10 @@ app.use("/api/products", productRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/addresses", addressRoutes);
+
 app.listen(process.env.PORT, () => {
   console.log(`API ${process.env.PORT} portunda çalışıyor`);
 });
-
-
-
-const pool = require("./db");
 
 pool.connect()
   .then(client => {
