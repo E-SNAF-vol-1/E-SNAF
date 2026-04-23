@@ -1,14 +1,16 @@
 import { useState } from "react";
-import { useSepet } from "../context/SepetContext.jsx"
+import { useSepet } from "../context/SepetContext.jsx";
+import { useAuth } from "../context/AuthContext.jsx"; // AuthContext eklendi
 import { useNavigate } from "react-router-dom";
 
 export default function SepetOzeti() {
     const navigate = useNavigate();
     const { state } = useSepet();
+    const { user } = useAuth(); // Kullanıcı oturum durumu çekiliyor
     const [modalAcik, setModalAcik] = useState(false);
     const urunler = state.SepetNesneleri || [];
 
-    // Toplam fiyat hesaplama (Miktarı ve Fiyatı sayıya çevirerek)
+    // Toplam fiyat hesaplama
     const toplamFiyat = urunler.reduce((toplam, urun) => {
         return toplam + (Number(urun.fiyat) * Number(urun.miktar || 1));
     }, 0);
@@ -18,13 +20,11 @@ export default function SepetOzeti() {
 
     // Alışverişi bitirme mantığı
     const odemeSureciniYonet = () => {
-        const token = localStorage.getItem("token");
-
-        if (token) {
-            // Giriş yapmış, ödemeye geçiyoruz
+        // user objesi varsa veya token mevcutsa doğrudan ödemeye git
+        if (user || localStorage.getItem("token")) {
             navigate("/odeme");
         } else {
-            // Giriş yoksa "Yol Ayrımı" modalını gösteriyoruz
+            // Hiçbir oturum verisi yoksa modalı aç
             setModalAcik(true);
         }
     };
@@ -60,7 +60,6 @@ export default function SepetOzeti() {
                 </div>
             </div>
 
-
             <button
                 onClick={odemeSureciniYonet}
                 className="w-full mt-8 py-4 bg-[#4d3a2e] text-[#fdfbf7] rounded-xl font-bold hover:bg-[#3d2e25] transition-all shadow-lg active:scale-95 transform"
@@ -68,7 +67,7 @@ export default function SepetOzeti() {
                 ALIŞVERİŞİ TAMAMLA
             </button>
 
-            {/* Misafir Karşılama Modalı */}
+            {/* Giriş yapmamış kullanıcılar için yol ayrımı modalı */}
             {modalAcik && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[99999] flex items-center justify-center p-4">
                     <div className="bg-[#fdfbf7] rounded-3xl p-8 max-w-md w-full shadow-2xl border border-[#ede6ca] animate-in fade-in zoom-in duration-300">
