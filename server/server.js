@@ -47,7 +47,7 @@ app.use(session({
   }
 }));
 
-app.use("/uploads", express.static(path.join(__dirname, "../admin/uploads")));
+app.use("/uploads", express.static(path.resolve(__dirname, "../../admin/uploads")));
 
 app.get("/", (req, res) => {
   res.json({ mesaj: "E-SNAF API çalışıyor" });

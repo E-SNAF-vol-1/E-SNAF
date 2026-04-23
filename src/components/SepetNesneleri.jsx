@@ -5,7 +5,7 @@ export default function SepetNesneleri({ item }) {
     const { dispatch } = useSepet()
     const navigate = useNavigate();
 
-    // HTML etiketlerini temizleyen ve metni 50 karakterle sınırlayan fonksiyon
+    // HTML etiketlerini temizleyen ve metni sınırlayan fonksiyon
     const temizAciklamaGetir = (html) => {
         if (!html) return "Açıklama bulunmuyor";
         const temizMetin = html.replace(/<[^>]*>/g, ' ').trim();
@@ -14,16 +14,31 @@ export default function SepetNesneleri({ item }) {
             : temizMetin;
     }
 
-    // KRİTİK NOKTA: Veritabanındaki sütun adınız olan 'urun_adi' öncelikli yapıldı
     const urunIsmi = item.urun_adi || item.isim || item.ad || "İsimsiz Ürün";
     const kisaAciklama = temizAciklamaGetir(item.aciklama);
 
-    const detayaGit = () => {
-        const kategori = (item.kategori || "genel").toLowerCase();
-        const altKategori = (item.altKategori || item.alt_kategori || "urun").toLowerCase();
-        const urlIsim = urunIsmi.toLowerCase().replace(/\s+/g, '-');
+    // URL Dostu Metin Oluşturucu (Slugify)
+    const urlFormatla = (metin) => {
+        if (!metin) return "genel";
+        return metin
+            .toString()
+            .toLowerCase()
+            .trim()
+            .replace(/[ığüşöç]/g, (m) => ({ 'ı': 'i', 'ğ': 'g', 'ü': 'u', 'ş': 's', 'ö': 'o', 'ç': 'c' }[m]))
+            .replace(/[^a-z0-9 -]/g, '')
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-');
+    }
 
-        navigate(`/urun/${kategori}/${altKategori}/${urlIsim}/${item.id}`);
+    const detayaGit = () => {
+        // App.jsx rotasına tam uyum için parametreleri hazırlıyoruz
+        // /urun/:kategori/:altKategori/:urunAdi/:id
+        const kategori = urlFormatla(item.kategori_adi || item.kategori);
+        const altKategori = urlFormatla(item.alt_kategori_adi || item.alt_kategori || item.altKategori);
+        const urunSlug = urlFormatla(urunIsmi);
+
+        // Oluşturulan temiz URL ile yönlendirme
+        navigate(`/urun/${kategori}/${altKategori}/${urunSlug}/${item.id}`);
     }
 
     return (
@@ -41,7 +56,7 @@ export default function SepetNesneleri({ item }) {
             </div>
 
             <div className="flex-1">
-                {/* Ürün İsmi - Veritabanı sütununa tam uyumlu */}
+                {/* Ürün İsmi */}
                 <h3
                     onClick={detayaGit}
                     className="font-bold text-lg text-[#5d4037] cursor-pointer hover:text-[#8d6e63] transition-colors"
@@ -49,7 +64,7 @@ export default function SepetNesneleri({ item }) {
                     {urunIsmi}
                 </h3>
 
-                {/* 50 Karakter Sınırlı Açıklama */}
+                {/* Açıklama */}
                 <p className="text-sm text-gray-500 italic mt-1 leading-relaxed">
                     {kisaAciklama}
                 </p>
@@ -57,7 +72,7 @@ export default function SepetNesneleri({ item }) {
                 <p className="font-semibold text-[#8d6e63] mt-2">{item.fiyat} TL</p>
             </div>
 
-            {/* Miktar ve Silme Butonları Mevcut Yapısını Koruyor */}
+            {/* Miktar ve Silme Butonları */}
             <div className="flex items-center gap-3 bg-[#ede6ca] px-3 py-2 rounded-lg">
                 <button onClick={() => dispatch({ type: "SEPETCIKAR", payload: item.id })} className="text-[#d84315] font-bold w-6">−</button>
                 <span className="w-8 text-center font-bold">{item.miktar}</span>
