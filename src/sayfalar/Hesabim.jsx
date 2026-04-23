@@ -52,36 +52,407 @@ const ls = {
   }
 };
 
+const temizMetin = (deger) => String(deger ?? "")
+  .replace(/&/g, "&amp;")
+  .replace(/</g, "&lt;")
+  .replace(/>/g, "&gt;")
+  .replace(/"/g, "&quot;");
+
+const siparisKalemToplam = (urun) => Number(urun?.birim_fiyat || 0) * Number(urun?.adet || 0);
+
+const siparisPdfHtmlOlustur = (veri) => {
+  const s = veri?.siparis || {};
+  const urunler = Array.isArray(veri?.urunler) ? veri.urunler : [];
+  const musteriAdi = s?.misafir_bilgileri?.ad
+    ? `${s.misafir_bilgileri.ad || ""} ${s.misafir_bilgileri.soyad || ""}`.trim()
+    : "Kayıtlı Kullanıcı";
+
+  const urunSatirlari = urunler.map((u, index) => `
+    <tr>
+      <td>${index + 1}</td>
+      <td>${temizMetin(u.urun_adi || `Ürün #${u.urun_id || "-"}`)}</td>
+      <td>${Number(u.adet || 0)}</td>
+      <td>${formatPara(u.birim_fiyat || 0)}</td>
+      <td>${formatPara(siparisKalemToplam(u))}</td>
+    </tr>
+  `).join("");
+
+  return `<!doctype html>
+  <html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <title>E-İrsaliye - Sipariş #${s.id}</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        padding: 32px;
+        font-family: Arial, Helvetica, sans-serif;
+        background: #f5f5f5;
+        color: #222;
+      }
+      .actions {
+        max-width: 900px;
+        margin: 0 auto 16px;
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+      }
+      .actions button {
+        border: none;
+        background: #2e7d32;
+        color: white;
+        padding: 12px 18px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .actions button.secondary {
+        background: #5d4037;
+      }
+      .page {
+        max-width: 900px;
+        margin: 0 auto;
+        background: white;
+        padding: 40px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+      }
+      .top {
+        display: flex;
+        justify-content: space-between;
+        gap: 24px;
+        border-bottom: 2px solid #e8e8e8;
+        padding-bottom: 20px;
+        margin-bottom: 24px;
+      }
+      .brand h1 {
+        margin: 0 0 8px;
+        font-size: 28px;
+        color: #2e7d32;
+      }
+      .brand p, .meta p, .box p {
+        margin: 4px 0;
+        line-height: 1.5;
+      }
+      .title {
+        text-align: right;
+      }
+      .title h2 {
+        margin: 0 0 8px;
+        font-size: 24px;
+        color: #5d4037;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        margin-bottom: 24px;
+      }
+      .box {
+        border: 1px solid #e5e5e5;
+        border-radius: 10px;
+        padding: 16px;
+        background: #fcfcfc;
+      }
+      .box h3 {
+        margin: 0 0 10px;
+        font-size: 13px;
+        letter-spacing: 0.8px;
+        color: #7b6a58;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+      }
+      thead th {
+        background: #f2efe9;
+        color: #5d4037;
+        font-size: 13px;
+      }
+      th, td {
+        border: 1px solid #e4ded2;
+        padding: 10px;
+        text-align: left;
+        font-size: 13px;
+      }
+      .summary {
+        margin-top: 20px;
+        display: flex;
+        justify-content: flex-end;
+      }
+      .summary-box {
+        width: 280px;
+        border-radius: 10px;
+        overflow: hidden;
+        border: 1px solid #ddd;
+      }
+      .summary-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 12px 14px;
+        background: #fff;
+      }
+      .summary-row.total {
+        background: #5d4037;
+        color: #fff;
+        font-size: 18px;
+        font-weight: 700;
+      }
+      .note {
+        margin-top: 28px;
+        padding-top: 16px;
+        border-top: 1px dashed #ccc;
+        color: #666;
+        font-size: 12px;
+      }
+      @media print {
+        body { background: white; padding: 0; }
+        .actions { display: none; }
+        .page { box-shadow: none; max-width: none; margin: 0; padding: 20px; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="actions">
+      <button onclick="window.print()">PDF İndir / Yazdır</button>
+      <button class="secondary" onclick="window.close()">Kapat</button>
+    </div>
+
+    <div class="page">
+      <div class="top">
+        <div class="brand">
+          <h1>E-SNAF</h1>
+          <p><strong>Belge Türü:</strong> E-İrsaliye / Sipariş Dökümü</p>
+          <p><strong>Oluşturulma Tarihi:</strong> ${temizMetin(formatTarih(new Date().toISOString()))}</p>
+        </div>
+        <div class="title">
+          <h2>Sipariş #${s.id}</h2>
+          <div class="meta">
+            <p><strong>Sipariş Tarihi:</strong> ${temizMetin(formatTarih(s.siparis_tarihi))}</p>
+            
+            <p><strong>Ödeme Yöntemi:</strong> ${temizMetin(s.odeme_yontemi || "-")}</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="box">
+          <h3>MÜŞTERİ BİLGİLERİ</h3>
+          <p><strong>Ad Soyad:</strong> ${temizMetin(musteriAdi)}</p>
+          <p><strong>E-posta:</strong> ${temizMetin(s?.misafir_bilgileri?.email || "-")}</p>
+          <p><strong>Telefon:</strong> ${temizMetin(s?.misafir_bilgileri?.telefon || "-")}</p>
+        </div>
+
+        <div class="box">
+          <h3>TESLİMAT ADRESİ</h3>
+          <p><strong>Adres Başlığı:</strong> ${temizMetin(s.adres_basligi || "-")}</p>
+          <p>${temizMetin(s.tam_adres || "-")}</p>
+          <p>${temizMetin([s.sehir_adi, s.posta_kodu].filter(Boolean).join(" ")) || "-"}</p>
+        </div>
+      </div>
+
+      <div class="box">
+        <h3>ÜRÜN LİSTESİ</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Ürün</th>
+              <th>Adet</th>
+              <th>Birim Fiyat</th>
+              <th>Tutar</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${urunSatirlari || '<tr><td colspan="5">Ürün bulunamadı.</td></tr>'}
+          </tbody>
+        </table>
+
+        <div class="summary">
+          <div class="summary-box">
+            <div class="summary-row">
+              <span>Genel Toplam</span>
+              <span>${temizMetin(formatPara(s.toplam_tutar || 0))}</span>
+            </div>
+            <div class="summary-row total">
+              <span>Ödenecek Tutar</span>
+              <span>${temizMetin(formatPara(s.toplam_tutar || 0))}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      ${s.notlar ? `
+      <div class="box" style="margin-top: 18px;">
+        <h3>SİPARİŞ NOTU</h3>
+        <p>${temizMetin(s.notlar)}</p>
+      </div>` : ""}
+
+      <div class="note">
+        Bu belge sistemde ayrıca saklanmaz. Kullanıcı talep ettiğinde tarayıcı üzerinden anlık olarak oluşturulur.
+      </div>
+    </div>
+  </body>
+  </html>`;
+};
+
+const siparisPdfPenceresiAc = async (siparisId) => {
+  const popup = window.open("", "_blank", "width=1100,height=900");
+
+  if (!popup) {
+    throw new Error("PDF penceresi açılamadı. Tarayıcı açılır pencereyi engelliyor olabilir.");
+  }
+
+  const res = await api.get(`/orders/my/${siparisId}`);
+  const html = siparisPdfHtmlOlustur(res.data);
+
+  popup.document.open();
+  popup.document.write(html);
+  popup.document.close();
+
+  return popup;
+};
+
 // ═══════════════════════════════════════════════════════════════════════════════
 //  MENÜ TANIMLARI
 // ═══════════════════════════════════════════════════════════════════════════════
 const MENU = [
   { id: "siparisler",  ad: "Siparişlerim",       ikon: "bx bx-cart" },
-  { id: "favoriler",   ad: "Favorilerim",        ikon: "bx bx-heart" },
-  { id: "adresler",    ad: "Adreslerim",         ikon: "bx bx-map" },
-  { id: "stok_alarm",  ad: "Stok Alarm Listem",  ikon: "bx bx-package" },
-  { id: "havale",      ad: "Havale Bildirimi",   ikon: "bx bx-credit-card" },
-  { id: "fiyat_alarm", ad: "Fiyat Alarm Listem", ikon: "bx bx-dollar-circle" }
+  { id: "favoriler",   ad: "Favorilerim",       ikon: "bx bx-heart" },
+  { id: "adresler",    ad: "Adreslerim",        ikon: "bx bx-map" },
+  { id: "stok_alarm",  ad: "Stok Alarm Listem", ikon: "bx bx-bell" },
+  { id: "havale",      ad: "Havale Bildirimi",  ikon: "bx bx-transfer" },
+  { id: "fiyat_alarm", ad: "Fiyat Alarm Listem",ikon: "bx bx-money" }
 ];
 
 const SEHIRLER = [
-  { id: 1, ad: "İstanbul" }, { id: 2, ad: "Ankara" }, { id: 3, ad: "İzmir" },
-  { id: 4, ad: "Bursa" }, { id: 5, ad: "Antalya" }, { id: 6, ad: "Adana" },
-  { id: 7, ad: "Konya" }, { id: 8, ad: "Gaziantep" }, { id: 9, ad: "Şanlıurfa" },
-  { id: 10, ad: "Kayseri" }, { id: 11, ad: "Mersin" }, { id: 12, ad: "Eskişehir" },
-  { id: 13, ad: "Diyarbakır" }, { id: 14, ad: "Samsun" }, { id: 15, ad: "Denizli" },
-  { id: 16, ad: "Malatya" }, { id: 17, ad: "Kahramanmaraş" }, { id: 18, ad: "Erzurum" },
-  { id: 19, ad: "Van" }, { id: 20, ad: "Elazığ" }, { id: 21, ad: "Trabzon" }
+  { id: 1, ad: "Adana" }, { id: 2, ad: "Adıyaman" }, { id: 3, ad: "Afyonkarahisar" },
+  { id: 4, ad: "Ağrı" }, { id: 5, ad: "Amasya" }, { id: 6, ad: "Ankara" },
+  { id: 7, ad: "Antalya" }, { id: 8, ad: "Artvin" }, { id: 9, ad: "Aydın" },
+  { id: 10, ad: "Balıkesir" }, { id: 11, ad: "Bilecik" }, { id: 12, ad: "Bingöl" },
+  { id: 13, ad: "Bitlis" }, { id: 14, ad: "Bolu" }, { id: 15, ad: "Burdur" },
+  { id: 16, ad: "Bursa" }, { id: 17, ad: "Çanakkale" }, { id: 18, ad: "Çankırı" },
+  { id: 19, ad: "Çorum" }, { id: 20, ad: "Denizli" }, { id: 21, ad: "Diyarbakır" },
+  { id: 22, ad: "Edirne" }, { id: 23, ad: "Elazığ" }, { id: 24, ad: "Erzincan" },
+  { id: 25, ad: "Erzurum" }, { id: 26, ad: "Eskişehir" }, { id: 27, ad: "Gaziantep" },
+  { id: 28, ad: "Giresun" }, { id: 29, ad: "Gümüşhane" }, { id: 30, ad: "Hakkâri" },
+  { id: 31, ad: "Hatay" }, { id: 32, ad: "Isparta" }, { id: 33, ad: "Mersin" },
+  { id: 34, ad: "İstanbul" }, { id: 35, ad: "İzmir" }, { id: 36, ad: "Kars" },
+  { id: 37, ad: "Kastamonu" }, { id: 38, ad: "Kayseri" }, { id: 39, ad: "Kırklareli" },
+  { id: 40, ad: "Kırşehir" }, { id: 41, ad: "Kocaeli" }, { id: 42, ad: "Konya" },
+  { id: 43, ad: "Kütahya" }, { id: 44, ad: "Malatya" }, { id: 45, ad: "Manisa" },
+  { id: 46, ad: "Kahramanmaraş" }, { id: 47, ad: "Mardin" }, { id: 48, ad: "Muğla" },
+  { id: 49, ad: "Muş" }, { id: 50, ad: "Nevşehir" }, { id: 51, ad: "Niğde" },
+  { id: 52, ad: "Ordu" }, { id: 53, ad: "Rize" }, { id: 54, ad: "Sakarya" },
+  { id: 55, ad: "Samsun" }, { id: 56, ad: "Siirt" }, { id: 57, ad: "Sinop" },
+  { id: 58, ad: "Sivas" }, { id: 59, ad: "Tekirdağ" }, { id: 60, ad: "Tokat" },
+  { id: 61, ad: "Trabzon" }, { id: 62, ad: "Tunceli" }, { id: 63, ad: "Şanlıurfa" },
+  { id: 64, ad: "Uşak" }, { id: 65, ad: "Van" }, { id: 66, ad: "Yozgat" },
+  { id: 67, ad: "Zonguldak" }, { id: 68, ad: "Aksaray" }, { id: 69, ad: "Bayburt" },
+  { id: 70, ad: "Karaman" }, { id: 71, ad: "Kırıkkale" }, { id: 72, ad: "Batman" },
+  { id: 73, ad: "Şırnak" }, { id: 74, ad: "Bartın" }, { id: 75, ad: "Ardahan" },
+  { id: 76, ad: "Iğdır" }, { id: 77, ad: "Yalova" }, { id: 78, ad: "Karabük" },
+  { id: 79, ad: "Kilis" }, { id: 80, ad: "Osmaniye" }, { id: 81, ad: "Düzce" }
 ];
 
-// Küçük ikon yardımcısı — tutarlı hizalama için
-const Icon = ({ name, style }) => (
-  <i className={name} style={{ verticalAlign: "middle", ...style }} />
-);
+const Icon = ({ name, style }) => <i className={name} style={style} />;
 
-// ═══════════════════════════════════════════════════════════════════════════════
-//  SİPARİŞ DETAY MODALİ
-// ═══════════════════════════════════════════════════════════════════════════════
+function LoadingBox({ mesaj = "Yükleniyor..." }) {
+  return (
+    <div style={ps.spinnerKutu}>
+      <div style={ps.spinner} />
+      <p style={ps.bilgiYazi}>{mesaj}</p>
+    </div>
+  );
+}
+
+function EmptyState({ ikon, baslik, alt, btnAd, onBtn }) {
+  return (
+    <div style={ps.bos}>
+      <div style={ps.bosIkon}><Icon name={ikon} /></div>
+      <h3 style={ps.bosBaslik}>{baslik}</h3>
+      <p style={ps.bosAlt}>{alt}</p>
+      {btnAd && <button style={ps.alisverisBtn} onClick={onBtn}>{btnAd}</button>}
+    </div>
+  );
+}
+
+function Dashboard({ onSecim, onSiparisTakipAc }) {
+  const kartlar = [
+    { id: "siparisler",  ikon: "bx bx-cart",      ad: "SİPARİŞLERİM" },
+    { id: "favoriler",   ikon: "bx bx-heart",     ad: "FAVORİLERİM" },
+    { id: "adresler",    ikon: "bx bx-map",       ad: "ADRESLERİM" },
+    { id: "stok_alarm",  ikon: "bx bx-bell",      ad: "STOK ALARM LİSTEM" },
+    { id: "havale",      ikon: "bx bx-transfer",  ad: "HAVALE BİLDİRİMİ" },
+    { id: "fiyat_alarm", ikon: "bx bx-money",     ad: "FİYAT ALARM LİSTEM" }
+  ];
+
+  return (
+    <div>
+      <SiparisTakipForm onDetayAc={onSiparisTakipAc} />
+      <div style={ds.grid}>
+        {kartlar.map((k) => (
+          <div key={k.id} className="dash-kart" style={ds.kart} onClick={() => onSecim(k.id)}>
+            <div style={ds.kartIkonDaire}><Icon name={k.ikon} style={ds.kartIkon} /></div>
+            <div style={ds.kartAd}>{k.ad}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SiparisTakipForm({ onDetayAc }) {
+  const [no, setNo] = useState("");
+  const [hata, setHata] = useState("");
+  const [yukleniyor, setYukleniyor] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setHata("");
+    const siparisId = String(no).trim();
+
+    if (!siparisId) {
+      setHata("Lütfen sipariş numarası girin.");
+      return;
+    }
+
+    setYukleniyor(true);
+    try {
+      await api.get(`/orders/my/${siparisId}`);
+      onDetayAc(siparisId);
+      setNo("");
+    } catch {
+      setHata("Sipariş bulunamadı veya bu sipariş size ait değil.");
+    } finally {
+      setYukleniyor(false);
+    }
+  };
+
+  return (
+    <div style={ds.takipKutu}>
+      <div style={ds.takipBaslik}>
+        <Icon name="bx bx-search-alt" style={ds.takipIkon} /> SİPARİŞ TAKİBİ
+      </div>
+      <form style={ds.takipForm} onSubmit={handleSubmit}>
+        <input
+          type="text"
+          placeholder="Sipariş numaranızı girin"
+          value={no}
+          onChange={(e) => setNo(e.target.value)}
+          style={ds.takipInput}
+        />
+        <button type="submit" style={ds.takipBtn} disabled={yukleniyor}>
+          {yukleniyor ? "YÜKLENİYOR..." : "GÖNDER"}
+        </button>
+      </form>
+      {hata && <div style={ds.takipHata}><Icon name="bx bx-error-circle" /> {hata}</div>}
+    </div>
+  );
+}
+
 function SiparisDetayModal({ siparisId, onKapat }) {
   const [veri, setVeri] = useState(null);
   const [yukleniyor, setYukleniyor] = useState(true);
@@ -94,7 +465,8 @@ function SiparisDetayModal({ siparisId, onKapat }) {
         const res = await api.get(`/orders/my/${siparisId}`);
         if (aktif) setVeri(res.data);
       } catch (err) {
-        if (aktif) setHata(err.response?.data?.mesaj || "Sipariş detayı alınamadı.");
+        console.error(err);
+        if (aktif) setHata("Sipariş detayları alınamadı.");
       } finally {
         if (aktif) setYukleniyor(false);
       }
@@ -102,8 +474,9 @@ function SiparisDetayModal({ siparisId, onKapat }) {
     return () => { aktif = false; };
   }, [siparisId]);
 
-  const s = veri?.siparis;
-  const dc = durumRenk(s?.durum || "");
+  const siparis = veri?.siparis;
+  const urunler = veri?.urunler || [];
+  const dc = durumRenk(siparis?.durum);
 
   return (
     <div style={ms.overlay} onClick={onKapat}>
@@ -111,7 +484,7 @@ function SiparisDetayModal({ siparisId, onKapat }) {
         <div style={ms.panelBaslik}>
           <div>
             <span style={ms.modalEtiket}>SİPARİŞ DETAYI</span>
-            {s && <h2 style={ms.siparisNo}>#{s.id}</h2>}
+            <h3 style={ms.siparisNo}>#{siparisId}</h3>
           </div>
           <button style={ms.kapat} onClick={onKapat}>
             <Icon name="bx bx-x" style={{ fontSize: "24px" }} />
@@ -119,60 +492,54 @@ function SiparisDetayModal({ siparisId, onKapat }) {
         </div>
 
         <div style={ms.scrollAlan}>
-          {yukleniyor && <p style={ms.bilgi}>Yükleniyor...</p>}
-          {hata && <p style={{ ...ms.bilgi, color: "#c62828" }}>{hata}</p>}
+          {yukleniyor && <div style={ms.bilgi}>Sipariş yükleniyor...</div>}
+          {hata && <div style={ps.hataKutu}>{hata}</div>}
 
-          {!yukleniyor && !hata && veri && (
+          {!yukleniyor && !hata && siparis && (
             <>
               <div style={ms.ozetSatir}>
-                <span style={{ ...ms.badge, background: dc.bg, color: dc.text, border: `1px solid ${dc.border}` }}>
-                  <Icon name={durumIkonClass(s.durum)} /> {s.durum}
-                </span>
-                <span style={ms.tarihKucuk}>{formatTarih(s.siparis_tarihi)}</span>
+                <div>
+                  <div style={{ ...ms.badge, background: dc.bg, color: dc.text, border: `1px solid ${dc.border}` }}>
+                    <Icon name={durumIkonClass(siparis.durum)} /> {siparis.durum}
+                  </div>
+                </div>
+                <span style={ms.tarihKucuk}>{formatTarih(siparis.siparis_tarihi)}</span>
               </div>
 
-              {s.tam_adres && (
-                <div style={ms.blok}>
-                  <span style={ms.blokBaslik}>
-                    <Icon name="bx bx-map" /> Teslimat Adresi
-                  </span>
-                  <p style={ms.blokIcerik}>
-                    {s.adres_basligi && <strong>{s.adres_basligi} — </strong>}
-                    {s.tam_adres}{s.sehir_adi ? `, ${s.sehir_adi}` : ""}
-                    {s.posta_kodu ? ` ${s.posta_kodu}` : ""}
-                  </p>
-                </div>
-              )}
-
-              {s.notlar && (
-                <div style={ms.blok}>
-                  <span style={ms.blokBaslik}>
-                    <Icon name="bx bx-note" /> Sipariş Notu
-                  </span>
-                  <p style={ms.blokIcerik}>{s.notlar}</p>
-                </div>
-              )}
+              <div style={ms.blok}>
+                <div style={ms.blokBaslik}><Icon name="bx bx-map" /> TESLİMAT ADRESİ</div>
+                <p style={ms.blokIcerik}>
+                  {siparis.adres_basligi ? <strong>{siparis.adres_basligi}</strong> : null}
+                  {siparis.adres_basligi ? <br /> : null}
+                  {siparis.tam_adres || "Adres bilgisi yok"}
+                  {siparis.sehir_adi ? ` / ${siparis.sehir_adi}` : ""}
+                  {siparis.posta_kodu ? ` / ${siparis.posta_kodu}` : ""}
+                </p>
+              </div>
 
               <div style={ms.blok}>
-                <span style={ms.blokBaslik}>
-                  <Icon name="bx bx-shopping-bag" /> Sipariş Edilen Ürünler
-                </span>
+                <div style={ms.blokBaslik}><Icon name="bx bx-credit-card" /> ÖDEME BİLGİSİ</div>
+                <p style={ms.blokIcerik}>{siparis.odeme_yontemi || "Belirtilmemiş"}</p>
+              </div>
+
+              <div style={ms.blok}>
+                <div style={ms.blokBaslik}><Icon name="bx bx-package" /> ÜRÜNLER</div>
                 <div style={ms.urunListesi}>
-                  {veri.urunler?.map((u, i) => (
-                    <div key={i} style={ms.urunSatir}>
+                  {urunler.map((u) => (
+                    <div key={u.id} style={ms.urunSatir}>
                       <div style={ms.urunAd}>
                         <span style={ms.urunAdet}>{u.adet}x</span>
                         <span>{u.urun_adi || `Ürün #${u.urun_id}`}</span>
                       </div>
-                      <span style={ms.urunFiyat}>{formatPara(u.birim_fiyat * u.adet)}</span>
+                      <span style={ms.urunFiyat}>{formatPara(u.birim_fiyat)}</span>
                     </div>
                   ))}
                 </div>
               </div>
 
               <div style={ms.toplamSatir}>
-                <span style={ms.toplamLabel}>Toplam Tutar</span>
-                <span style={ms.toplamTutar}>{formatPara(s.toplam_tutar)}</span>
+                <span style={ms.toplamLabel}>TOPLAM TUTAR</span>
+                <span style={ms.toplamTutar}>{formatPara(siparis.toplam_tutar)}</span>
               </div>
             </>
           )}
@@ -182,89 +549,11 @@ function SiparisDetayModal({ siparisId, onKapat }) {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-//  DASHBOARD
-// ═══════════════════════════════════════════════════════════════════════════════
-function Dashboard({ onSecim, onSiparisTakipAc }) {
-  const [siparisNo, setSiparisNo] = useState("");
-  const [hata, setHata] = useState("");
-  const [yukleniyor, setYukleniyor] = useState(false);
-
-  const handleTakip = async (e) => {
-    e.preventDefault();
-    setHata("");
-    const no = parseInt(siparisNo.trim(), 10);
-    if (!Number.isInteger(no) || no <= 0) {
-      setHata("Lütfen geçerli bir sipariş numarası girin.");
-      return;
-    }
-    setYukleniyor(true);
-    try {
-      await api.get(`/orders/my/${no}`);
-      onSiparisTakipAc(no);
-    } catch (err) {
-      setHata(err.response?.status === 404
-        ? "Bu numaraya ait siparişiniz bulunamadı."
-        : "Sipariş sorgulanırken bir hata oluştu.");
-    } finally {
-      setYukleniyor(false);
-    }
-  };
-
-  return (
-    <div>
-      <div style={ds.takipKutu}>
-        <div style={ds.takipBaslik}>
-          <Icon name="bx bx-package" style={ds.takipIkon} />
-          <span>SİPARİŞ TAKİP</span>
-        </div>
-        <form onSubmit={handleTakip} style={ds.takipForm}>
-          <input
-            type="text"
-            inputMode="numeric"
-            placeholder="Sipariş Numarası :"
-            value={siparisNo}
-            onChange={(e) => setSiparisNo(e.target.value)}
-            style={ds.takipInput}
-            maxLength={12}
-          />
-          <button type="submit" style={ds.takipBtn} disabled={yukleniyor}>
-            {yukleniyor ? "..." : "ARA"}
-          </button>
-        </form>
-        {hata && (
-          <p style={ds.takipHata}>
-            <Icon name="bx bx-error-circle" /> {hata}
-          </p>
-        )}
-      </div>
-
-      <div style={ds.grid}>
-        {MENU.map((m) => (
-          <button
-            key={m.id}
-            className="dash-kart"
-            style={ds.kart}
-            onClick={() => onSecim(m.id)}
-          >
-            <div style={ds.kartIkonDaire}>
-              <Icon name={m.ikon} style={ds.kartIkon} />
-            </div>
-            <div style={ds.kartAd}>{m.ad.toUpperCase()}</div>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-//  SİPARİŞLERİM
-// ═══════════════════════════════════════════════════════════════════════════════
 function Siparislerim({ onDetayAc }) {
   const [liste, setListe] = useState([]);
   const [yukleniyor, setYukleniyor] = useState(true);
   const [hata, setHata] = useState("");
+  const [pdfHazirlaniyorId, setPdfHazirlaniyorId] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -280,6 +569,21 @@ function Siparislerim({ onDetayAc }) {
       }
     })();
   }, []);
+
+  const handlePdfAc = async (e, siparisId) => {
+    e.stopPropagation();
+    setPdfHazirlaniyorId(siparisId);
+    try {
+      await siparisPdfPenceresiAc(siparisId);
+    } catch (err) {
+      console.error(err);
+      alert(err.message || "Sipariş PDF'i oluşturulamadı.");
+    } finally {
+      setPdfHazirlaniyorId(null);
+    }
+  };
+
+  
 
   if (yukleniyor) return <LoadingBox mesaj="Siparişleriniz yükleniyor..." />;
   if (hata) return <div style={ps.hataKutu}>{hata}</div>;
@@ -299,6 +603,8 @@ function Siparislerim({ onDetayAc }) {
     <div style={ps.siparisListesi}>
       {liste.map((sp) => {
         const dc = durumRenk(sp.durum);
+        const pdfBekliyor = pdfHazirlaniyorId === sp.id;
+
         return (
           <div
             key={sp.id}
@@ -315,6 +621,7 @@ function Siparislerim({ onDetayAc }) {
                 <Icon name={durumIkonClass(sp.durum)} /> {sp.durum}
               </span>
             </div>
+
             <div style={ps.kartAlt}>
               <div style={ps.kartBilgi}>
                 <span style={ps.kartEtiket}>
@@ -322,6 +629,7 @@ function Siparislerim({ onDetayAc }) {
                 </span>
                 <span style={ps.kartDeger}>{formatTarih(sp.siparis_tarihi)}</span>
               </div>
+
               <div style={ps.kartBilgi}>
                 <span style={ps.kartEtiket}>
                   <Icon name="bx bx-lira" /> Tutar
@@ -330,6 +638,20 @@ function Siparislerim({ onDetayAc }) {
                   {formatPara(sp.toplam_tutar)}
                 </span>
               </div>
+
+              <div style={ps.kartAksiyonlari}>
+                <button
+                  type="button"
+                  style={ps.pdfButon}
+                  onClick={(e) => handlePdfAc(e, sp.id)}
+                  disabled={pdfBekliyor}
+                >
+                  <Icon name="bx bx-show-alt" /> PDF Gör
+                </button>
+
+                
+              </div>
+
               <div style={ps.detayOk}>
                 Detaylar <Icon name="bx bx-right-arrow-alt" />
               </div>
@@ -341,9 +663,6 @@ function Siparislerim({ onDetayAc }) {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-//  FAVORİLERİM
-// ═══════════════════════════════════════════════════════════════════════════════
 function Favorilerim({ userId }) {
   const key = useMemo(() => lsKey(userId, "favoriler"), [userId]);
   const [liste, setListe] = useState(() => ls.oku(key));
@@ -390,9 +709,6 @@ function Favorilerim({ userId }) {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-//  ADRESLERİM
-// ═══════════════════════════════════════════════════════════════════════════════
 function Adreslerim() {
   const [liste, setListe] = useState([]);
   const [yukleniyor, setYukleniyor] = useState(true);
@@ -594,9 +910,6 @@ function AdresForm({ mevcut, onKapat, onBasari }) {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-//  STOK ALARM LİSTEM
-// ═══════════════════════════════════════════════════════════════════════════════
 function StokAlarm({ userId }) {
   const key = useMemo(() => lsKey(userId, "stok_alarm"), [userId]);
   const [liste, setListe] = useState(() => ls.oku(key));
@@ -626,193 +939,132 @@ function StokAlarm({ userId }) {
 
   return (
     <div>
-      <p style={ps.altBaslik}>Stoğu biten ürünler geldiğinde size haber verelim.</p>
+      <div style={ps.ustBar}><p style={ps.altBaslik}>Stok geldiğinde bildirim almak istediğiniz ürünler</p></div>
 
-      <form style={fs.formSatir} onSubmit={ekle}>
+      <form style={fs.kart} onSubmit={ekle}>
+        <label style={fs.label}>ÜRÜN ADI *</label>
         <input
-          type="text"
-          placeholder="Ürün adı *"
           value={form.urunAdi}
           onChange={(e) => setForm({ ...form, urunAdi: e.target.value })}
-          style={{ ...fs.input, flex: 2, marginBottom: 0 }}
-          maxLength={100}
+          style={fs.input}
+          placeholder="Örn: El Yapımı Sabun"
         />
+        <label style={fs.label}>ÜRÜN LİNKİ (İsteğe bağlı)</label>
         <input
-          type="text"
-          placeholder="Ürün linki (opsiyonel)"
           value={form.link}
           onChange={(e) => setForm({ ...form, link: e.target.value })}
-          style={{ ...fs.input, flex: 2, marginBottom: 0 }}
-          maxLength={300}
+          style={fs.input}
+          placeholder="https://..."
         />
-        <button type="submit" style={fs.eklemeBtn}>
-          <Icon name="bx bx-plus" /> Ekle
-        </button>
+        {hata && <div style={fs.hataKutu}><Icon name="bx bx-error-circle" /> {hata}</div>}
+        <button type="submit" style={fs.submitBtn}><Icon name="bx bx-plus" /> Alarm Ekle</button>
       </form>
-      {hata && (
-        <p style={{ color: "#c62828", fontSize: "13px", marginTop: "8px" }}>
-          <Icon name="bx bx-error-circle" /> {hata}
-        </p>
-      )}
 
-      {!liste.length ? (
-        <EmptyState ikon="bx bx-package" baslik="Stok alarm listeniz boş" alt="Takip etmek istediğiniz ürünleri ekleyin." />
-      ) : (
-        <div style={{ marginTop: "24px" }}>
-          {liste.map((u) => (
-            <div key={u.id} style={ps.alarmSatir}>
-              <div style={{ flex: 1 }}>
-                <p style={ps.alarmAd}>
-                  <Icon name="bx bx-package" /> {u.urunAdi}
-                </p>
-                <p style={ps.alarmTarih}>Eklenme: {formatTarih(u.tarih)}</p>
-                {u.link && (
-                  <a href={u.link} target="_blank" rel="noreferrer" style={ps.alarmLink}>
-                    Ürüne git <Icon name="bx bx-link-external" />
-                  </a>
-                )}
-              </div>
-              <button style={ps.btnSil} onClick={() => sil(u.id)}>
-                <Icon name="bx bx-trash" />
-              </button>
+      <div style={{ marginTop: "18px" }}>
+        {!liste.length ? (
+          <EmptyState
+            ikon="bx bx-bell-off"
+            baslik="Stok alarm listeniz boş"
+            alt="Takip etmek istediğiniz ürünleri ekleyin."
+          />
+        ) : liste.map((x) => (
+          <div key={x.id} style={ps.alarmSatir}>
+            <div style={{ flex: 1 }}>
+              <p style={ps.alarmAd}><Icon name="bx bx-bell" /> {x.urunAdi}</p>
+              <p style={ps.alarmTarih}>Eklenme: {formatTarih(x.tarih)}</p>
+              {x.link && <a href={x.link} target="_blank" rel="noreferrer" style={ps.alarmLink}><Icon name="bx bx-link-external" /> Ürüne git</a>}
             </div>
-          ))}
-        </div>
-      )}
+            <button style={ps.btnSil} onClick={() => sil(x.id)}><Icon name="bx bx-trash" /></button>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-//  HAVALE BİLDİRİMİ
-// ═══════════════════════════════════════════════════════════════════════════════
 function HavaleBildirimi({ userId, user }) {
-  const key = useMemo(() => lsKey(userId, "havale"), [userId]);
-  const [gecmis, setGecmis] = useState(() => ls.oku(key));
-  const [form, setForm] = useState({ siparisNo: "", tutar: "", banka: "", aciklama: "" });
+  const key = useMemo(() => lsKey(userId, "havale_bildirim"), [userId]);
+  const [kayitlar, setKayitlar] = useState(() => ls.oku(key));
+  const [form, setForm] = useState({
+    siparisNo: "",
+    gonderenAd: `${user?.ad || ""} ${user?.soyad || ""}`.trim(),
+    banka: "",
+    tutar: "",
+    aciklama: ""
+  });
+  const [mesaj, setMesaj] = useState("");
   const [hata, setHata] = useState("");
-  const [basari, setBasari] = useState(false);
 
-  const gonder = (e) => {
+  const kaydet = (e) => {
     e.preventDefault();
-    setHata(""); setBasari(false);
+    setMesaj("");
+    setHata("");
 
-    if (!form.siparisNo || !/^\d+$/.test(form.siparisNo)) {
-      setHata("Geçerli bir sipariş numarası girin."); return;
-    }
-    const tutar = parseFloat(form.tutar);
-    if (!tutar || tutar <= 0) { setHata("Geçerli bir tutar girin."); return; }
+    if (!form.siparisNo.trim()) { setHata("Sipariş numarası zorunlu."); return; }
+    if (!form.gonderenAd.trim()) { setHata("Gönderen adı zorunlu."); return; }
     if (!form.banka.trim()) { setHata("Banka adı zorunlu."); return; }
+    if (!form.tutar || Number(form.tutar) <= 0) { setHata("Geçerli bir tutar girin."); return; }
 
     const yeni = [{
       id: Date.now(),
-      siparisNo: form.siparisNo,
-      tutar,
-      banka: form.banka.trim(),
-      aciklama: form.aciklama.trim(),
-      ad: `${user.ad} ${user.soyad}`,
-      tarih: new Date().toISOString(),
-      durum: "Beklemede"
-    }, ...gecmis];
+      ...form,
+      tarih: new Date().toISOString()
+    }, ...kayitlar];
 
-    setGecmis(yeni);
+    setKayitlar(yeni);
     ls.yaz(key, yeni);
-    setForm({ siparisNo: "", tutar: "", banka: "", aciklama: "" });
-    setBasari(true);
-    setTimeout(() => setBasari(false), 4000);
+    setMesaj("Havale bildiriminiz alındı. En kısa sürede kontrol edilecektir.");
+    setForm({ siparisNo: "", gonderenAd: `${user?.ad || ""} ${user?.soyad || ""}`.trim(), banka: "", tutar: "", aciklama: "" });
   };
 
   return (
     <div>
-      <p style={ps.altBaslik}>Yaptığınız havale/EFT'yi bildirerek siparişinizin onaylanmasını hızlandırın.</p>
+      <div style={ps.ustBar}><p style={ps.altBaslik}>EFT / Havale ile yaptığınız ödeme için bildirim bırakın</p></div>
+
+      <form style={fs.kart} onSubmit={kaydet}>
+        {hata && <div style={fs.hataKutu}><Icon name="bx bx-error-circle" /> {hata}</div>}
+        {mesaj && <div style={fs.basariKutu}><Icon name="bx bx-check-circle" /> {mesaj}</div>}
+
+        <label style={fs.label}>SİPARİŞ NO *</label>
+        <input value={form.siparisNo} onChange={(e) => setForm({ ...form, siparisNo: e.target.value })} style={fs.input} />
+
+        <label style={fs.label}>GÖNDEREN ADI *</label>
+        <input value={form.gonderenAd} onChange={(e) => setForm({ ...form, gonderenAd: e.target.value })} style={fs.input} />
+
+        <label style={fs.label}>BANKA *</label>
+        <input value={form.banka} onChange={(e) => setForm({ ...form, banka: e.target.value })} style={fs.input} placeholder="Örn: Ziraat Bankası" />
+
+        <label style={fs.label}>TUTAR *</label>
+        <input type="number" min="0" step="0.01" value={form.tutar} onChange={(e) => setForm({ ...form, tutar: e.target.value })} style={fs.input} />
+
+        <label style={fs.label}>AÇIKLAMA</label>
+        <textarea value={form.aciklama} onChange={(e) => setForm({ ...form, aciklama: e.target.value })} style={{ ...fs.input, minHeight: "90px", resize: "vertical" }} />
+
+        <button type="submit" style={fs.submitBtn}><Icon name="bx bx-send" /> Bildirim Gönder</button>
+      </form>
 
       <div style={ps.havaleKutu}>
-        <div style={ps.havaleBilgiBaslik}>
-          <Icon name="bx bx-credit-card" /> Havale Yapabileceğiniz Hesaplar
-        </div>
+        <div style={ps.havaleBilgiBaslik}><Icon name="bx bx-info-circle" /> BİLGİ</div>
         <div style={ps.havaleBilgi}>
-          <strong>Ziraat Bankası</strong><br />
-          IBAN: TR00 0000 0000 0000 0000 0000 00<br />
-          <span style={{ color: "#666" }}>Hesap adı: E-SNAF Ticaret A.Ş.</span>
+          Havale/EFT ödemelerinizde açıklama alanına sipariş numaranızı yazmayı unutmayın.
+          Bildiriminiz kontrol edildikten sonra siparişiniz onaylanır.
         </div>
       </div>
 
-      <form style={{ marginTop: "24px" }} onSubmit={gonder}>
-        {hata && (
-          <div style={fs.hataKutu}>
-            <Icon name="bx bx-error-circle" /> {hata}
-          </div>
-        )}
-        {basari && (
-          <div style={fs.basariKutu}>
-            <Icon name="bx bx-check-circle" /> Havale bildiriminiz alındı. 24 saat içinde onaylanacaktır.
-          </div>
-        )}
-
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-          <div>
-            <label style={fs.label}>SİPARİŞ NO *</label>
-            <input
-              type="text"
-              inputMode="numeric"
-              value={form.siparisNo}
-              onChange={(e) => setForm({ ...form, siparisNo: e.target.value })}
-              style={fs.input}
-              maxLength={12}
-            />
-          </div>
-          <div>
-            <label style={fs.label}>TUTAR (₺) *</label>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              value={form.tutar}
-              onChange={(e) => setForm({ ...form, tutar: e.target.value })}
-              style={fs.input}
-            />
-          </div>
-        </div>
-
-        <label style={fs.label}>HAVALE YAPTIĞINIZ BANKA *</label>
-        <input
-          type="text"
-          value={form.banka}
-          onChange={(e) => setForm({ ...form, banka: e.target.value })}
-          style={fs.input}
-          placeholder="Örn: Ziraat, Garanti, İş Bankası..."
-          maxLength={50}
-        />
-
-        <label style={fs.label}>AÇIKLAMA</label>
-        <textarea
-          value={form.aciklama}
-          onChange={(e) => setForm({ ...form, aciklama: e.target.value })}
-          style={{ ...fs.input, minHeight: "80px", resize: "vertical" }}
-          maxLength={300}
-          placeholder="Havale dekontu ile ilgili notunuz..."
-        />
-
-        <button type="submit" style={fs.submitBtn}>
-          <Icon name="bx bx-send" /> Havale Bildirimini Gönder
-        </button>
-      </form>
-
-      {gecmis.length > 0 && (
-        <div style={{ marginTop: "32px" }}>
-          <h3 style={{ ...ps.baslik, fontSize: "18px", marginBottom: "16px" }}>Geçmiş Bildirimleriniz</h3>
-          {gecmis.map((h) => (
-            <div key={h.id} style={ps.havaleGecmisKart}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div>
-                  <strong>Sipariş #{h.siparisNo}</strong> — {formatPara(h.tutar)}
-                  <p style={{ margin: "4px 0 0", fontSize: "12px", color: "#888" }}>
-                    {h.banka} • {formatTarih(h.tarih)}
-                  </p>
-                </div>
-                <span style={{ ...ps.durumBadge, background: "#fff3e0", color: "#e65100", border: "1px solid #ffcc80" }}>
-                  <Icon name="bx bx-bell" /> {h.durum}
-                </span>
+      {kayitlar.length > 0 && (
+        <div style={{ marginTop: "18px" }}>
+          <p style={{ ...ps.altBaslik, marginBottom: "10px" }}>Geçmiş havale bildirimleri</p>
+          {kayitlar.map((k) => (
+            <div key={k.id} style={ps.havaleGecmisKart}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
+                <strong style={{ color: KAHVE }}>Sipariş #{k.siparisNo}</strong>
+                <span style={{ color: "#888", fontSize: "12px" }}>{formatTarih(k.tarih)}</span>
+              </div>
+              <div style={{ marginTop: "8px", fontSize: "14px", color: "#444", lineHeight: 1.6 }}>
+                <div><strong>Gönderen:</strong> {k.gonderenAd}</div>
+                <div><strong>Banka:</strong> {k.banka}</div>
+                <div><strong>Tutar:</strong> {formatPara(k.tutar)}</div>
+                {k.aciklama && <div><strong>Açıklama:</strong> {k.aciklama}</div>}
               </div>
             </div>
           ))}
@@ -822,9 +1074,6 @@ function HavaleBildirimi({ userId, user }) {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-//  FİYAT ALARM LİSTEM
-// ═══════════════════════════════════════════════════════════════════════════════
 function FiyatAlarm({ userId }) {
   const key = useMemo(() => lsKey(userId, "fiyat_alarm"), [userId]);
   const [liste, setListe] = useState(() => ls.oku(key));
@@ -835,13 +1084,12 @@ function FiyatAlarm({ userId }) {
     e.preventDefault();
     setHata("");
     if (!form.urunAdi.trim()) { setHata("Ürün adı zorunlu."); return; }
-    const fiyat = parseFloat(form.hedefFiyat);
-    if (!fiyat || fiyat <= 0) { setHata("Geçerli bir hedef fiyat girin."); return; }
+    if (!form.hedefFiyat || Number(form.hedefFiyat) <= 0) { setHata("Geçerli hedef fiyat girin."); return; }
 
     const yeni = [...liste, {
       id: Date.now(),
       urunAdi: form.urunAdi.trim(),
-      hedefFiyat: fiyat,
+      hedefFiyat: Number(form.hedefFiyat),
       link: form.link.trim(),
       tarih: new Date().toISOString()
     }];
@@ -858,65 +1106,45 @@ function FiyatAlarm({ userId }) {
 
   return (
     <div>
-      <p style={ps.altBaslik}>Ürün fiyatı belirlediğiniz değerin altına düştüğünde bildirim alın.</p>
+      <div style={ps.ustBar}><p style={ps.altBaslik}>İstediğiniz fiyat seviyesini takip edin</p></div>
 
-      <form style={fs.formSatir} onSubmit={ekle}>
-        <input
-          type="text"
-          placeholder="Ürün adı *"
-          value={form.urunAdi}
-          onChange={(e) => setForm({ ...form, urunAdi: e.target.value })}
-          style={{ ...fs.input, flex: 2, marginBottom: 0 }}
-          maxLength={100}
-        />
-        <input
-          type="number"
-          step="0.01"
-          min="0"
-          placeholder="Hedef fiyat (₺) *"
-          value={form.hedefFiyat}
-          onChange={(e) => setForm({ ...form, hedefFiyat: e.target.value })}
-          style={{ ...fs.input, flex: 1, marginBottom: 0 }}
-        />
-        <button type="submit" style={fs.eklemeBtn}>
-          <Icon name="bx bx-plus" /> Ekle
-        </button>
+      <form style={fs.kart} onSubmit={ekle}>
+        {hata && <div style={fs.hataKutu}><Icon name="bx bx-error-circle" /> {hata}</div>}
+
+        <label style={fs.label}>ÜRÜN ADI *</label>
+        <input value={form.urunAdi} onChange={(e) => setForm({ ...form, urunAdi: e.target.value })} style={fs.input} />
+
+        <label style={fs.label}>HEDEF FİYAT *</label>
+        <input type="number" min="0" step="0.01" value={form.hedefFiyat} onChange={(e) => setForm({ ...form, hedefFiyat: e.target.value })} style={fs.input} />
+
+        <label style={fs.label}>ÜRÜN LİNKİ</label>
+        <input value={form.link} onChange={(e) => setForm({ ...form, link: e.target.value })} style={fs.input} placeholder="https://..." />
+
+        <button type="submit" style={fs.submitBtn}><Icon name="bx bx-plus" /> Alarm Ekle</button>
       </form>
-      {hata && (
-        <p style={{ color: "#c62828", fontSize: "13px", marginTop: "8px" }}>
-          <Icon name="bx bx-error-circle" /> {hata}
-        </p>
-      )}
 
-      {!liste.length ? (
-        <EmptyState ikon="bx bx-dollar-circle" baslik="Fiyat alarm listeniz boş" alt="İndirimini beklediğiniz ürünleri ekleyin." />
-      ) : (
-        <div style={{ marginTop: "24px" }}>
-          {liste.map((u) => (
-            <div key={u.id} style={ps.alarmSatir}>
-              <div style={{ flex: 1 }}>
-                <p style={ps.alarmAd}>
-                  <Icon name="bx bx-dollar-circle" /> {u.urunAdi}
-                </p>
-                <p style={{ margin: "4px 0", fontSize: "14px" }}>
-                  Hedef: <strong style={{ color: "#2e7d32" }}>{formatPara(u.hedefFiyat)}</strong>
-                </p>
-                <p style={ps.alarmTarih}>Eklenme: {formatTarih(u.tarih)}</p>
-              </div>
-              <button style={ps.btnSil} onClick={() => sil(u.id)}>
-                <Icon name="bx bx-trash" />
-              </button>
+      <div style={{ marginTop: "18px" }}>
+        {!liste.length ? (
+          <EmptyState
+            ikon="bx bx-money-withdraw"
+            baslik="Fiyat alarm listeniz boş"
+            alt="Takip etmek istediğiniz ürünleri ve hedef fiyatı ekleyin."
+          />
+        ) : liste.map((x) => (
+          <div key={x.id} style={ps.alarmSatir}>
+            <div style={{ flex: 1 }}>
+              <p style={ps.alarmAd}><Icon name="bx bx-money" /> {x.urunAdi}</p>
+              <p style={ps.alarmTarih}>Hedef fiyat: {formatPara(x.hedefFiyat)} · Eklenme: {formatTarih(x.tarih)}</p>
+              {x.link && <a href={x.link} target="_blank" rel="noreferrer" style={ps.alarmLink}><Icon name="bx bx-link-external" /> Ürüne git</a>}
             </div>
-          ))}
-        </div>
-      )}
+            <button style={ps.btnSil} onClick={() => sil(x.id)}><Icon name="bx bx-trash" /></button>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-//  PROFİL BİLGİLERİM
-// ═══════════════════════════════════════════════════════════════════════════════
 function Profil({ user }) {
   return (
     <div style={ps.profilKart}>
@@ -927,62 +1155,30 @@ function Profil({ user }) {
       <div style={ps.profilGrid}>
         <div style={ps.profilAlan}>
           <span style={ps.profilEtiket}>AD</span>
-          <span style={ps.profilDeger}>{user.ad}</span>
+          <span style={ps.profilDeger}>{user.ad || "-"}</span>
         </div>
         <div style={ps.profilAlan}>
           <span style={ps.profilEtiket}>SOYAD</span>
-          <span style={ps.profilDeger}>{user.soyad}</span>
+          <span style={ps.profilDeger}>{user.soyad || "-"}</span>
         </div>
-        <div style={{ ...ps.profilAlan, gridColumn: "1 / -1" }}>
+        <div style={ps.profilAlan}>
           <span style={ps.profilEtiket}>E-POSTA</span>
-          <span style={ps.profilDeger}>{user.email}</span>
+          <span style={ps.profilDeger}>{user.email || "-"}</span>
         </div>
-        {user.telefon && (
-          <div style={{ ...ps.profilAlan, gridColumn: "1 / -1" }}>
-            <span style={ps.profilEtiket}>TELEFON</span>
-            <span style={ps.profilDeger}>{user.telefon}</span>
-          </div>
-        )}
+        <div style={ps.profilAlan}>
+          <span style={ps.profilEtiket}>KULLANICI ID</span>
+          <span style={ps.profilDeger}>{user.id || "-"}</span>
+        </div>
       </div>
 
       <div style={ps.profilBilgi}>
-        <Icon name="bx bx-lock-alt" style={{ fontSize: "18px" }} />
-        <span>Bilgilerinizi güncellemek için destek@e-snaf.com adresine yazabilirsiniz.</span>
+        <Icon name="bx bx-info-circle" />
+        Profil bilgileri şimdilik sadece görüntüleniyor. Düzenleme istersen ayrıca ekleriz.
       </div>
     </div>
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-//  YARDIMCI BİLEŞENLER
-// ═══════════════════════════════════════════════════════════════════════════════
-function LoadingBox({ mesaj = "Yükleniyor..." }) {
-  return (
-    <div style={ps.spinnerKutu}>
-      <div style={{ ...ps.spinner, margin: "0 auto" }}></div>
-      <p style={ps.bilgiYazi}>{mesaj}</p>
-    </div>
-  );
-}
-
-function EmptyState({ ikon, baslik, alt, btnAd, onBtn }) {
-  return (
-    <div style={ps.bos}>
-      <div style={ps.bosIkon}>
-        <Icon name={ikon} />
-      </div>
-      <p style={ps.bosBaslik}>{baslik}</p>
-      <p style={ps.bosAlt}>{alt}</p>
-      {btnAd && onBtn && (
-        <button style={ps.alisverisBtn} onClick={onBtn}>{btnAd}</button>
-      )}
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-//  ANA HESABIM SAYFASI
-// ═══════════════════════════════════════════════════════════════════════════════
 export default function Hesabim() {
   const { user, cikisYap, yukleniyor } = useAuth();
   const navigate = useNavigate();
@@ -1108,9 +1304,6 @@ export default function Hesabim() {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-//  STİLLER
-// ═══════════════════════════════════════════════════════════════════════════════
 const YESIL = "#4CAF50";
 const YESIL_KOYU = "#2e7d32";
 const KAHVE = "#5d4037";
@@ -1215,6 +1408,10 @@ const ms = {
 };
 
 const fs = {
+  kart: {
+    backgroundColor: "#fff", borderRadius: "18px", padding: "22px",
+    boxShadow: "0 2px 10px rgba(93,64,55,0.06)"
+  },
   label: {
     display: "block", color: KAHVE, fontSize: "12px",
     fontWeight: "800", marginTop: "16px", marginBottom: "6px", letterSpacing: "1px"
@@ -1228,14 +1425,9 @@ const fs = {
   submitBtn: {
     width: "100%", padding: "14px", marginTop: "24px",
     background: YESIL, color: "#fff", border: "none",
-    borderRadius: "12px", fontSize: "15px", fontWeight: "800",
-    cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "8px"
-  },
-  eklemeBtn: {
-    padding: "13px 22px", background: YESIL, color: "#fff",
-    border: "none", borderRadius: "12px", fontSize: "14px",
-    fontWeight: "700", cursor: "pointer", whiteSpace: "nowrap",
-    display: "inline-flex", alignItems: "center", gap: "6px"
+    borderRadius: "12px", fontSize: "14px", fontWeight: "800",
+    cursor: "pointer", display: "inline-flex", alignItems: "center",
+    justifyContent: "center", gap: "8px"
   },
   formSatir: {
     display: "flex", gap: "10px", flexWrap: "wrap",
@@ -1342,9 +1534,22 @@ const ps = {
     padding: "6px 14px", borderRadius: "30px", fontSize: "13px", fontWeight: "700"
   },
   kartAlt: { display: "flex", alignItems: "center", gap: "22px", flexWrap: "wrap" },
+  kartAksiyonlari: { display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" },
   kartBilgi: { display: "flex", flexDirection: "column", gap: "2px" },
   kartEtiket: { fontSize: "11px", fontWeight: "700", color: "#a68b6d", letterSpacing: "0.5px", display: "inline-flex", alignItems: "center", gap: "4px" },
   kartDeger: { fontSize: "14px", color: KAHVE, fontWeight: "600" },
+  pdfButon: {
+    padding: "10px 14px", background: "#eef7ee", color: YESIL_KOYU,
+    border: "1px solid #cfe6cf", borderRadius: "10px", fontSize: "13px",
+    fontWeight: "700", cursor: "pointer", display: "inline-flex",
+    alignItems: "center", gap: "6px"
+  },
+  pdfIndirButon: {
+    padding: "10px 14px", background: YESIL, color: "#fff",
+    border: "1px solid #3f9143", borderRadius: "10px", fontSize: "13px",
+    fontWeight: "700", cursor: "pointer", display: "inline-flex",
+    alignItems: "center", gap: "6px"
+  },
   detayOk: { marginLeft: "auto", fontSize: "13px", color: YESIL_KOYU, fontWeight: "700", whiteSpace: "nowrap", display: "inline-flex", alignItems: "center", gap: "4px" },
 
   listeGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "16px" },
