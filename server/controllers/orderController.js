@@ -7,10 +7,18 @@ exports.createOrder = async (req, res) => {
     await client.query("BEGIN");
 
     const musteriId = req.session?.user?.id || null;
-    const { addressInfo, customerInfo, items, totalPrice, isGuest } = req.body;
+    const {
+      addressInfo,
+      customerInfo,
+      items,
+      totalPrice,
+      isGuest,
+      odeme_yontemi // Frontend'den "KREDİ" veya "HAVALE" olarak gelmeli
+    } = req.body;
 
     let nihaiAdresId = req.body.adres_id;
 
+    // 1. Adres İşlemleri
     if (!nihaiAdresId && addressInfo) {
       const yeniAdresResult = await client.query(`
         INSERT INTO public.adres (musteri_id, adres_basligi, tam_adres, posta_kodu)
@@ -20,33 +28,39 @@ exports.createOrder = async (req, res) => {
       nihaiAdresId = yeniAdresResult.rows[0].id;
     }
 
+    // 2. Sepet Doğrulama
     const sepet = items || [];
-
     if (!sepet.length) {
       await client.query("ROLLBACK");
-      return res.status(400).json({ mesaj: "Sepet boş" });
+      return res.status(400).json({ mesaj: "Sepet boş, sipariş oluşturulamaz." });
     }
 
-    // Misafir bilgilerine mail adresini de ekledik
-    const siparisNotu = isGuest
-      ? `Misafir: ${customerInfo.ad} ${customerInfo.soyad} - E-posta: ${customerInfo.email} - Tel: ${customerInfo.telefon}`
-      : null;
+    // 3. Misafir Bilgileri (JSONB)
+    const misafirData = isGuest ? {
+      ad: customerInfo?.ad,
+      soyad: customerInfo?.soyad,
+      email: customerInfo?.email,
+      telefon: customerInfo?.telefon
+    } : null;
 
+    // 4. Sipariş Kaydı - odeme_yontemi sütunu buraya $5 olarak eklenmiştir
     const siparisResult = await client.query(`
-      INSERT INTO public.siparis (musteri_id, adres_id, toplam_tutar, durum, notlar)
-      VALUES ($1, $2, $3, 'Hazırlanıyor', $4)
+      INSERT INTO public.siparis (musteri_id, adres_id, toplam_tutar, durum, misafir_bilgileri, odeme_yontemi)
+      VALUES ($1, $2, $3, 'Hazırlanıyor', $4, $5)
       RETURNING *
-    `, [musteriId, nihaiAdresId, totalPrice, siparisNotu]);
+    `, [musteriId, nihaiAdresId, totalPrice, misafirData, odeme_yontemi]);
 
     const siparis = siparisResult.rows[0];
 
+    // 5. Sipariş Detaylarını Döngüyle Ekleme
     for (const item of sepet) {
       await client.query(`
         INSERT INTO public.siparis_detay (siparis_id, urun_id, adet, birim_fiyat)
         VALUES ($1, $2, $3, $4)
-      `, [siparis.id, item.id || item.urun_id, item.miktar, item.fiyat]);
+      `, [siparis.id, item.id || item.urun_id, item.miktar || item.adet, item.fiyat]);
     }
 
+    // 6. Kayıtlı Kullanıcıların Sepetini Sıfırlama
     if (musteriId) {
       await client.query(`
         UPDATE public.sepet_detay
@@ -58,13 +72,14 @@ exports.createOrder = async (req, res) => {
     await client.query("COMMIT");
 
     res.status(201).json({
-      mesaj: "Sipariş oluşturuldu",
+      mesaj: "Sipariş başarıyla oluşturuldu ve ödeme yöntemi kaydedildi.",
       siparis_id: siparis.id
     });
+
   } catch (err) {
     await client.query("ROLLBACK");
-    console.error(err);
-    res.status(500).json({ mesaj: "Sipariş oluşturulamadı" });
+    console.error("Sipariş Kayıt Hatası:", err);
+    res.status(500).json({ mesaj: "Sipariş oluşturulurken teknik bir hata oluştu." });
   } finally {
     client.release();
   }

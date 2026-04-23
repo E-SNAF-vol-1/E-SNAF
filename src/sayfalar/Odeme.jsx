@@ -75,7 +75,7 @@ export default function Odeme() {
             isGuest: !token,
             customerInfo: token ? null : customerData,
             addressInfo: addressData,
-            paymentInfo: { method: paymentMethod },
+            odeme_yontemi: paymentMethod === "kredi_karti" ? "KREDİ" : "HAVALE",
             items: state.SepetNesneleri,
             totalPrice: state.SepetNesneleri?.reduce((acc, item) => acc + (item.fiyat * item.miktar), 0) || 0
         };
