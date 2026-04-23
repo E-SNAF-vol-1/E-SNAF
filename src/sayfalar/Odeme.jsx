@@ -18,59 +18,84 @@ export default function Odeme() {
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth() + 1;
 
-    // State Yönetimi
+    // --- STATE YÖNETİMİ ---
     const [customerData, setCustomerData] = useState({ ad: "", soyad: "", email: "", telefon: "" });
     const [addressData, setAddressData] = useState({ baslik: "", sehir: "", ilce: "", detay: "", postaKodu: "" });
     const [paymentMethod, setPaymentMethod] = useState("kredi_karti");
     const [cardDetails, setCardDetails] = useState({ number: "", holder: "", month: "", year: "", cvv: "" });
 
-    // UI Muhafızları
+    // UI Durumları
     const [hata, setHata] = useState({ gorunur: false, mesaj: "" });
     const [isSuccess, setIsSuccess] = useState(false);
-    const [isProcessing, setIsProcessing] = useState(false); // Spam engelleyici
+    const [isProcessing, setIsProcessing] = useState(false);
     const [orderId, setOrderId] = useState("");
 
     const years = useMemo(() => Array.from({ length: 11 }, (_, i) => currentYear + i), [currentYear]);
     const months = useMemo(() => Array.from({ length: 12 }, (_, i) => i + 1), []);
 
+    // --- YARDIMCI FONKSİYONLAR & INPUT KONTROLLERİ ---
     const hataGoster = (mesaj) => {
         setHata({ gorunur: true, mesaj });
         window.scrollTo({ top: 0, behavior: 'smooth' });
         setTimeout(() => setHata({ gorunur: false, mesaj: "" }), 4000);
-        setIsProcessing(false); // Hata olursa butonu tekrar aç
+        setIsProcessing(false);
     };
 
+    // Sadece Harf Girişi (İsim & Soyisim)
+    const handleIsimGiris = (deger, alan) => {
+        const temizVeri = deger.replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ\s]/g, "");
+        setCustomerData({ ...customerData, [alan]: temizVeri });
+    };
+
+    // Telefon Formatı (05XX...)
     const handleTelefonGiris = (deger) => {
         let temizVeri = deger.replace(/\D/g, "");
         if (temizVeri.length > 0 && temizVeri[0] !== "0") temizVeri = "0" + temizVeri;
         setCustomerData({ ...customerData, telefon: temizVeri.slice(0, 11) });
     };
 
+    // Posta Kodu (Sadece 5 Rakam)
+    const handlePostaKoduGiris = (deger) => {
+        const temizVeri = deger.replace(/\D/g, "").slice(0, 5);
+        setAddressData({ ...addressData, postaKodu: temizVeri });
+    };
+
+    // --- ANA İŞLEM: SİPARİŞİ ONAYLA ---
     const handleProcessOrder = async (e) => {
         if (e) e.preventDefault();
-        if (isProcessing) return; // Zaten bir işlem varsa durdur
-        setIsProcessing(true); // Kapıları kapat
+        if (isProcessing) return;
+        setIsProcessing(true);
 
-        // --- SIKI VALIDASYON DENETİMİ ---
+        // REGEX MUHAFIZLARI
+        const isimRegex = /^[a-zA-ZçğıöşüÇĞİÖŞÜ\s]{2,50}$/;
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+        const postaKoduRegex = /^[0-9]{5}$/;
+
+        // 1. İletişim Kontrolü (Giriş Yapmamışsa)
         if (!token) {
-            if (!customerData.ad.trim() || !customerData.soyad.trim()) return hataGoster("Lütfen adınızı ve soyadınızı giriniz.");
-            if (customerData.telefon.length !== 11) return hataGoster("Telefon numarası başında 0 ile 11 hane olmalıdır.");
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+            if (!isimRegex.test(customerData.ad)) return hataGoster("Geçerli bir ad giriniz (Sadece harf).");
+            if (!isimRegex.test(customerData.soyad)) return hataGoster("Geçerli bir soyad giriniz (Sadece harf).");
             if (!emailRegex.test(customerData.email)) return hataGoster("Geçerli bir e-posta adresi giriniz.");
+            if (customerData.telefon.length !== 11) return hataGoster("Telefon 11 haneli olmalıdır.");
         }
 
+        // 2. Adres Kontrolü
         if (!addressData.baslik.trim() || !addressData.sehir.trim() || !addressData.detay.trim()) {
-            return hataGoster("Lütfen teslimat adresi bilgilerini eksiksiz doldurunuz.");
+            return hataGoster("Adres bilgilerini eksiksiz doldurunuz.");
+        }
+        if (!postaKoduRegex.test(addressData.postaKodu)) {
+            return hataGoster("Posta kodu 5 haneli rakam olmalıdır.");
         }
 
+        // 3. Ödeme Kontrolü
         if (paymentMethod === "kredi_karti") {
-            if (cardDetails.number.length !== 16) return hataGoster("Kredi kartı numarası 16 haneli olmalıdır.");
+            if (cardDetails.number.length !== 16) return hataGoster("Kart numarası 16 haneli olmalıdır.");
             if (!cardDetails.month || !cardDetails.year || cardDetails.cvv.length !== 3) return hataGoster("Kart bilgilerini eksiksiz giriniz.");
             const isExpired = parseInt(cardDetails.year) === currentYear && parseInt(cardDetails.month) < currentMonth;
             if (isExpired) return hataGoster("Kartınızın son kullanma tarihi geçmiş.");
         }
 
-        // --- GÖNDERİM ---
+        // GÖNDERİLECEK PAKET
         const siparisPaketi = {
             isGuest: !token,
             customerInfo: token ? null : customerData,
@@ -93,9 +118,6 @@ export default function Odeme() {
             }
         } catch (err) {
             hataGoster(err.response?.data?.mesaj || "Sunucuyla bağlantı kurulamadı.");
-        } finally {
-            // Başarılı olsa bile modal açılacağı için butonu tekrar açmaya gerek yok
-            // Ama her ihtimale karşı finally bloğunda durum güncellenebilir
         }
     };
 
@@ -106,6 +128,7 @@ export default function Odeme() {
         <div className="p-10 bg-[#fdfbf7] min-h-screen relative">
             {isSuccess && <SiparisBasarili orderId={orderId} navigate={navigate} />}
 
+            {/* Hata Bildirimi */}
             {hata.gorunur && (
                 <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[10000] animate-in slide-in-from-top duration-300">
                     <div className="bg-[#5d4037] text-[#fdfbf7] px-8 py-4 rounded-full shadow-2xl flex items-center gap-3 border border-[#d2b48c]">
@@ -125,13 +148,13 @@ export default function Odeme() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                 <div className="space-y-1">
                                     <label className="text-xs font-bold text-[#978175] uppercase ml-1">Ad</label>
-                                    <input type="text" placeholder="Adınız" className={inputStyle}
-                                        onChange={(e) => setCustomerData({ ...customerData, ad: e.target.value })} />
+                                    <input type="text" placeholder="Adınız" className={inputStyle} value={customerData.ad}
+                                        onChange={(e) => handleIsimGiris(e.target.value, "ad")} />
                                 </div>
                                 <div className="space-y-1">
                                     <label className="text-xs font-bold text-[#978175] uppercase ml-1">Soyad</label>
-                                    <input type="text" placeholder="Soyadınız" className={inputStyle}
-                                        onChange={(e) => setCustomerData({ ...customerData, soyad: e.target.value })} />
+                                    <input type="text" placeholder="Soyadınız" className={inputStyle} value={customerData.soyad}
+                                        onChange={(e) => handleIsimGiris(e.target.value, "soyad")} />
                                 </div>
                                 <div className="space-y-1">
                                     <label className="text-xs font-bold text-[#978175] uppercase ml-1">E-Posta</label>
@@ -155,7 +178,8 @@ export default function Odeme() {
                                 <input type="text" placeholder="Ev, İş vb." className={inputStyle} onChange={(e) => setAddressData({ ...addressData, baslik: e.target.value })} />
                             </div>
                             <div className="space-y-1"><label className="text-xs font-bold text-[#978175] uppercase ml-1">Posta Kodu</label>
-                                <input type="text" placeholder="34XXX" className={inputStyle} onChange={(e) => setAddressData({ ...addressData, postaKodu: e.target.value })} />
+                                <input type="text" value={addressData.postaKodu} placeholder="34XXX" className={inputStyle}
+                                    onChange={(e) => handlePostaKoduGiris(e.target.value)} />
                             </div>
                             <div className="space-y-1"><label className="text-xs font-bold text-[#978175] uppercase ml-1">Şehir</label>
                                 <input type="text" placeholder="Şehir" className={inputStyle} onChange={(e) => setAddressData({ ...addressData, sehir: e.target.value })} />
@@ -188,11 +212,11 @@ export default function Odeme() {
                                 <div className="space-y-1">
                                     <label className="text-xs font-bold text-[#978175] uppercase ml-1">Kart Sahibi</label>
                                     <input type="text" placeholder="İSİM SOYİSİM" className={`${inputStyle} uppercase`}
-                                        onChange={(e) => setCardDetails({ ...cardDetails, holder: e.target.value })} />
+                                        onChange={(e) => setCardDetails({ ...cardDetails, holder: e.target.value.replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ\s]/g, "") })} />
                                 </div>
                                 <div className="space-y-1">
                                     <label className="text-xs font-bold text-[#978175] uppercase ml-1">Kart Numarası</label>
-                                    <input type="text" placeholder="16 Haneli No" className={inputStyle}
+                                    <input type="text" value={cardDetails.number} placeholder="16 Haneli No" className={inputStyle}
                                         onChange={(e) => setCardDetails({ ...cardDetails, number: e.target.value.replace(/\D/g, "").slice(0, 16) })} />
                                 </div>
                                 <div className="grid grid-cols-3 gap-5">
@@ -204,7 +228,7 @@ export default function Odeme() {
                                         <option value="">Yıl</option>
                                         {years.map(y => <option key={y} value={y}>{y}</option>)}
                                     </select>
-                                    <input type="text" placeholder="CVV" className={inputStyle}
+                                    <input type="text" value={cardDetails.cvv} placeholder="CVV" className={inputStyle}
                                         onChange={(e) => setCardDetails({ ...cardDetails, cvv: e.target.value.replace(/\D/g, "").slice(0, 3) })} />
                                 </div>
                             </div>
