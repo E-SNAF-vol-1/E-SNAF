@@ -1,61 +1,67 @@
-import React, { useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
-import axios from "axios";
-import UrunKartlari from "../components/UrunKartlari";
+const pool = require("../db");
 
-const api = axios.create({
-    baseURL: "https://esnaf.apps.srv.aykutdurgut.com.tr/api"
-});
-
-export default function AramaSonuclari() {
-    const location = useLocation();
-    const queryParams = new URLSearchParams(location.search);
-    const aramaSorgusu = queryParams.get("q"); // URL'deki ?q= değerini alır
-
-    const [sonuclar, setSonuclar] = useState([]);
-    const [yukleniyor, setYukleniyor] = useState(true);
-
-    useEffect(() => {
-        const verileriGetir = async () => {
-            if (!aramaSorgusu) return;
-
-            setYukleniyor(true);
-            try {
-                // Backend'deki arama endpoint'ine istek atıyoruz
-                const res = await api.get(`/products/search?q=${encodeURIComponent(aramaSorgusu)}`);
-                setSonuclar(res.data);
-            } catch (err) {
-                console.error("Arama sonuçları getirilemedi:", err);
-            } finally {
-                setYukleniyor(false);
-            }
-        };
-
-        verileriGetir();
-    }, [aramaSorgusu]);
-
-    return (
-        <div className="max-w-7xl mx-auto px-4 py-10 min-h-screen">
-            <h1 className="text-2xl font-serif text-[#5d4037] mb-8">
-                "<span className="font-bold">{aramaSorgusu}</span>" için arama sonuçları
-            </h1>
-
-            {yukleniyor ? (
-                <div className="flex justify-center items-center py-20">
-                    <i className="bx bx-loader-alt animate-spin text-4xl text-[#d2b48c]"></i>
-                </div>
-            ) : sonuclar.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                    {sonuclar.map((urun) => (
-                        <UrunKartlari key={urun.id} urun={urun} />
-                    ))}
-                </div>
-            ) : (
-                <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-[#d2b48c]">
-                    <i className="bx bx-search-alt text-6xl text-gray-200 mb-4"></i>
-                    <p className="text-gray-500 italic">Aradığınız kriterlere uygun ürün bulunamadı.</p>
-                </div>
-            )}
-        </div>
-    );
+// Yardımcı Fonksiyon: DB satırlarını frontend formatına dönüştürür
+function mapProduct(row) {
+    if (!row) return null;
+    return {
+        id: row.id,
+        isim: row.urun_adi || "İsimsiz Ürün",
+        ad: row.urun_adi || "İsimsiz Ürün",
+        aciklama: row.aciklama || "",
+        fiyat: row.fiyat ? Number(row.fiyat) : 0,
+        stok: row.stok_adedi || 0,
+        kategori: row.kategori_adi || "Genel", // Hata veren kısım burasıydı, artık boş kalamaz
+        altKategori: row.alt_kategori_adi || "Genel",
+        resim: row.gorsel_yolu || "/images/bos.jpg",
+        renk: "Standart"
+    };
 }
+
+// Canlı Arama (Dropdown için)
+exports.liveSearch = async (req, res) => {
+    const { q } = req.query;
+    const queryTerm = `%${q}%`;
+    if (!q || q.length < 2) return res.json({ urunler: [], kategoriler: [], altKategoriler: [] });
+
+    try {
+        const urunler = await pool.query(`
+      SELECT u.id, u.urun_adi, u.fiyat, k.kategori_adi, ak.alt_kategori_adi,
+      (SELECT ug.gorsel_yolu FROM public.urun_gorsel ug WHERE ug.urun_id = u.id LIMIT 1) as gorsel_yolu
+      FROM public.urun u
+      LEFT JOIN public.alt_kategori ak ON ak.id = u.alt_kategori_id
+      LEFT JOIN public.kategori k ON k.id = ak.ana_kategori_id
+      WHERE u.urun_adi ILIKE $1 LIMIT 5
+    `, [queryTerm]);
+
+        res.json({
+            urunler: urunler.rows.map(mapProduct),
+            kategoriler: [], // Hata almamak için boş dizi gönderiyoruz
+            altKategoriler: []
+        });
+    } catch (err) {
+        console.error("Canlı Arama Hatası:", err);
+        res.status(500).json({ mesaj: "Hata" });
+    }
+};
+
+// Genel Arama (Sayfa için)
+exports.searchProducts = async (req, res) => {
+    const { q } = req.query;
+    const queryTerm = `%${q}%`;
+    try {
+        const query = `
+      SELECT u.id, u.urun_adi, u.aciklama, u.fiyat, u.stok_adedi, k.kategori_adi, ak.alt_kategori_adi,
+      (SELECT ug.gorsel_yolu FROM public.urun_gorsel ug WHERE ug.urun_id = u.id ORDER BY ug.ana_gorsel_mi DESC LIMIT 1) as gorsel_yolu
+      FROM public.urun u
+      LEFT JOIN public.alt_kategori ak ON ak.id = u.alt_kategori_id
+      LEFT JOIN public.kategori k ON k.id = ak.ana_kategori_id
+      WHERE u.urun_adi ILIKE $1 OR u.aciklama ILIKE $1 OR k.kategori_adi ILIKE $1 OR ak.alt_kategori_adi ILIKE $1
+      ORDER BY u.eklenme_tarihi DESC
+    `;
+        const result = await pool.query(query, [queryTerm]);
+        res.json(result.rows.map(mapProduct));
+    } catch (err) {
+        console.error("Arama Hatası:", err);
+        res.status(500).json({ mesaj: "Hata" });
+    }
+};

@@ -1,22 +1,23 @@
 const pool = require("../db");
 
 // Yardımcı Fonksiyon: DB satırlarını frontend formatına dönüştürür
+// server/controllers/productController.js
+
 function mapProduct(row) {
   if (!row) return null;
   return {
     id: row.id,
-    isim: row.urun_adi,
-    ad: row.urun_adi,
+    isim: row.urun_adi || "İsimsiz Ürün",
+    ad: row.urun_adi || "İsimsiz Ürün",
     aciklama: row.aciklama || "",
     fiyat: row.fiyat ? Number(row.fiyat) : 0,
     stok: row.stok_adedi || 0,
-    kategori: row.kategori_adi || "Genel",
+    kategori: row.kategori_adi || "Genel", // Hata veren kısım burasıydı, artık boş kalamaz
     altKategori: row.alt_kategori_adi || "Genel",
     resim: row.gorsel_yolu || "/images/bos.jpg",
     renk: "Standart"
   };
 }
-
 // 1. Canlı Arama (Eski koda ve sütun isimlerine tam uyumlu hale getirildi)
 exports.liveSearch = async (req, res) => {
   const { q } = req.query;
