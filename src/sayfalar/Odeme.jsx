@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import SiparisBasarili from "../components/SiparisBasarili.jsx";
+import SepetOzetiOdeme from "../components/SepetOzetiOdeme.jsx"; // Yeni bileşeni ekledik
 
 const api = axios.create({
     baseURL: "https://esnaf.apps.srv.aykutdurgut.com.tr/api",
@@ -35,7 +36,6 @@ export default function Odeme() {
     // --- AKILLI OTOMATİK DOLDURMA SİSTEMİ ---
     useEffect(() => {
         if (user) {
-            // 1. Temel Müşteri Bilgilerini Doldur
             setCustomerData({
                 ad: user.ad || "",
                 soyad: user.soyad || "",
@@ -43,7 +43,6 @@ export default function Odeme() {
                 telefon: user.telefon || ""
             });
 
-            // 2. Kayıtlı Adres Varsa Getir ve İlkini Seç
             const adresleriGetir = async () => {
                 try {
                     const res = await api.get("/addresses", {
@@ -56,7 +55,7 @@ export default function Odeme() {
                             sehir: ilkAdres.sehir || "",
                             ilce: ilkAdres.ilce || "",
                             detay: ilkAdres.detay || "",
-                            postaKodu: ilkAdres.posta_kodu || "" // DB'den gelen yılan vakası (snake_case) kontrolü
+                            postaKodu: (ilkAdres.posta_kodu || ilkAdres.postaKodu || "").toString()
                         });
                     }
                 } catch (err) {
@@ -104,7 +103,6 @@ export default function Odeme() {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
         const postaKoduRegex = /^[0-9]{5}$/;
 
-        // Doğrulamalar
         if (!isimRegex.test(customerData.ad)) return hataGoster("Ad sadece harflerden oluşmalıdır.");
         if (!isimRegex.test(customerData.soyad)) return hataGoster("Soyad sadece harflerden oluşmalıdır.");
         if (!emailRegex.test(customerData.email)) return hataGoster("Geçerli bir e-posta giriniz.");
@@ -152,7 +150,6 @@ export default function Odeme() {
                 const yeniSiparisId = response.data.siparis_id;
                 setOrderId(yeniSiparisId);
 
-                // PDF ve Başarı sayfası için veriyi hazırlıyoruz
                 setGuestOrderPdfData({
                     siparis: {
                         id: yeniSiparisId,
@@ -302,18 +299,12 @@ export default function Odeme() {
                     </section>
                 </form>
 
-                <aside className="h-fit sticky top-10">
-                    <div className="bg-[#4d3a2e] text-white p-8 rounded-3xl shadow-xl text-center border border-[#5d4a3e]">
-                        <h3 className="text-xl font-serif mb-6 border-b border-[#6d5a4e] pb-4 font-bold">Ödeme Tutarı</h3>
-                        <div className="text-3xl font-bold mb-8">
-                            {(cartTotal > 500 ? cartTotal : cartTotal + 50).toLocaleString("tr-TR")} TL
-                        </div>
-                        <button onClick={handleProcessOrder} disabled={isProcessing}
-                            className={`w-full py-5 rounded-xl font-black transition-all shadow-lg active:scale-95 ${isProcessing ? "bg-gray-400 cursor-not-allowed" : "bg-[#fdfbf7] text-[#4d3a2e] hover:bg-white"}`}>
-                            {isProcessing ? "İŞLENİYOR..." : "SİPARİŞİ ONAYLA"}
-                        </button>
-                    </div>
-                </aside>
+                {/* Sağ taraf artık bir asilzade gibi bağımsız bir bileşen */}
+                <SepetOzetiOdeme
+                    cartTotal={cartTotal}
+                    isProcessing={isProcessing}
+                    onConfirm={handleProcessOrder}
+                />
             </div>
         </div>
     );
