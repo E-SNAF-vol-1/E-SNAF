@@ -11,13 +11,13 @@ function mapProduct(row) {
     fiyat: row.fiyat ? Number(row.fiyat) : 0,
     stok: row.stok_adedi || 0,
     kategori: row.kategori_adi || "Genel",
-    altKategori: row.alt_kategori_adi || "Genel", // Bu isim eski koddakiyle aynı olmalı
+    altKategori: row.alt_kategori_adi || "Genel",
     resim: row.gorsel_yolu || "/images/bos.jpg",
     renk: "Standart"
   };
 }
 
-// 1. Canlı Arama (Eski koda uyumlu hale getirildi)
+// 1. Canlı Arama (Eski koda ve sütun isimlerine tam uyumlu hale getirildi)
 exports.liveSearch = async (req, res) => {
   const { q } = req.query;
   const queryTerm = `%${q}%`;
@@ -39,16 +39,20 @@ exports.liveSearch = async (req, res) => {
     `, [queryTerm]);
 
     // Kategorilerde Ara
-    const kategoriler = await pool.query(
-      "SELECT id, kategori_adi as ad FROM public.kategori WHERE kategori_adi ILIKE $1 LIMIT 3",
-      [queryTerm]
-    );
+    const kategoriler = await pool.query(`
+      SELECT id, kategori_adi, kategori_adi as ad 
+      FROM public.kategori 
+      WHERE kategori_adi ILIKE $1 
+      LIMIT 3
+    `, [queryTerm]);
 
-    // Alt Kategorilerde Ara (Eski sütun ismi kullanıldı)
-    const altKategoriler = await pool.query(
-      "SELECT id, alt_kategori_adi as ad FROM public.alt_kategori WHERE alt_kategori_adi ILIKE $1 LIMIT 3",
-      [queryTerm]
-    );
+    // Alt Kategorilerde Ara
+    const altKategoriler = await pool.query(`
+      SELECT id, alt_kategori_adi, alt_kategori_adi as ad 
+      FROM public.alt_kategori 
+      WHERE alt_kategori_adi ILIKE $1 
+      LIMIT 3
+    `, [queryTerm]);
 
     res.json({
       urunler: urunler.rows.map(mapProduct),
@@ -131,7 +135,7 @@ exports.getAll = async (req, res) => {
   }
 };
 
-// --- Diğer fonksiyonlar (getOne, create, update, remove) eski haliyle devam eder ---
+// 4. Tekil Ürün Detayı (Eski çalışan yapı)
 exports.getOne = async (req, res) => {
   try {
     const result = await pool.query(`
@@ -151,6 +155,7 @@ exports.getOne = async (req, res) => {
   }
 };
 
+// 5. Ürün Ekleme (Eski çalışan yapı)
 exports.create = async (req, res) => {
   try {
     const { alt_kategori_id, urun_adi, aciklama, fiyat, stok_adedi, gorsel_yolu } = req.body;
@@ -170,6 +175,7 @@ exports.create = async (req, res) => {
   }
 };
 
+// 6. Ürün Güncelleme (Eski çalışan yapı)
 exports.update = async (req, res) => {
   try {
     const { alt_kategori_id, urun_adi, aciklama, fiyat, stok_adedi, gorsel_yolu } = req.body;
@@ -193,6 +199,7 @@ exports.update = async (req, res) => {
   }
 };
 
+// 7. Ürün Silme (Eski çalışan yapı)
 exports.remove = async (req, res) => {
   try {
     await pool.query("DELETE FROM public.urun WHERE id = $1", [req.params.id]);
