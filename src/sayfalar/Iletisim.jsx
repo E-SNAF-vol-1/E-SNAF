@@ -24,8 +24,7 @@ export default function Iletisim() {
       fontWeight: '900', 
       marginBottom: '25px', 
       textAlign: 'center' 
-    },
-    // Tablo Yapısı
+},
     table: { 
       width: '100%', 
       borderCollapse: 'collapse', 
@@ -49,16 +48,14 @@ export default function Iletisim() {
       color: '#8d6e63', 
       fontSize: '14px', 
       backgroundColor: '#ffffff' 
-    },
-    // Harita Çerçevesi
+},
     mapContainer: { 
       borderRadius: '16px', 
       overflow: 'hidden', 
       border: '3px solid #5d4037', 
       height: '350px',
       marginBottom: '30px'
-    },
-    // Buton
+},
     backBtn: { 
       display: 'block', 
       width: '200px', 
@@ -79,28 +76,29 @@ export default function Iletisim() {
         <div style={styles.card}>
           <h1 style={styles.title}>İletişim ve Konum</h1>
 
-          {/* Kurumsal Bilgi Tablosu */}
+
           <div style={styles.table}>
             <div style={styles.row}><div style={styles.labelCell}>İşletme Adı</div><div style={styles.valueCell}>E-SNAF Bilgi Teknolojileri</div></div>
             <div style={styles.row}><div style={styles.labelCell}>Ticaret Ünvanı</div><div style={styles.valueCell}>E-SNAF Paz. ve Tic. A.Ş.</div></div>
-            <div style={styles.row}><div style={styles.labelCell}>Sorumlu Öğretmen</div><div style={styles.valueCell}>Aykut [Durgut]</div></div>
+            <div style={styles.row}><div style={styles.labelCell}>Sorumlu Öğretmen</div><div style={styles.valueCell}>Aykut Durgut</div></div>
             <div style={styles.row}><div style={styles.labelCell}>KEP Adresi</div><div style={styles.valueCell}>esnaf@hs02.kep.tr</div></div>
             <div style={styles.row}><div style={styles.labelCell}>MERSİS No</div><div style={styles.valueCell}>0739014655600017</div></div>
             <div style={styles.row}><div style={styles.labelCell}>Merkez Ofis</div><div style={styles.valueCell}>Altınoluk MYO, Edremit / Balıkesir</div></div>
             <div style={styles.row}><div style={styles.labelCell}>Çağrı Merkezi</div><div style={styles.valueCell}>0 850 222 44 44</div></div>
           </div>
 
-          {/* Harita - Altınoluk MYO Pinli */}
+
           <div style={styles.mapContainer}>
             <iframe 
               title="Altınoluk MYO Konumu"
-              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3075.6181867412956!2d26.756343075834252!3d39.56821597158859!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x14b09679a5cc9623%3A0x6315aad2f59c5b6f!2sBal%C4%B1kesir%20%C3%9Cniversitesi%20Alt%C4%B1noluk%20Meslek%20Y%C3%BCksek%20Okulu!5e0!3m2!1str!2str!4v1776952757850!5m2!1str!2str" width="600" height="450" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"
+              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3075.6181867412956!2d26.756343075834252!3d39.56821597158859!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x14b09679a5cc9623%3A0x6315aad2f59c5b6f!2sBal%C4%B1kesir%20%C3%9Cniversitesi%20Alt%C4%B1noluk%20Meslek%20Y%C3%BCksek%20Okulu!5e0!3m2!1str!2str!4v1776952757850!5m2!1str!2str" 
               width="100%" 
               height="100%" 
               style={{ border: 0 }} 
               allowFullScreen="" 
-              loading="lazy">
-            </iframe>
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+            />
           </div>
 
           <Link to="/" style={styles.backBtn}>Alışverişe Dön</Link>
@@ -109,4 +107,3 @@ export default function Iletisim() {
     </div>
   );
 }
-
