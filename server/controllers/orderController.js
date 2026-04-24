@@ -1,11 +1,5 @@
 const pool = require("../db");
 
-/**
- * SİPARİŞ KONTROLLERİ
- * Bu dosya hem kullanıcıların hem de yöneticilerin sipariş işlemlerini yönetir.
- */
-
-// --- SİPARİŞ OLUŞTURMA (FRONTEND İÇİN) ---
 exports.createOrder = async (req, res) => {
   const client = await pool.connect();
 
@@ -20,30 +14,27 @@ exports.createOrder = async (req, res) => {
       totalPrice,
       isGuest,
       odeme_yontemi,
-      adres_id,
-      notlar // Veritabanına eklenen yeni sütun
+      adres_id
     } = req.body;
 
     let nihaiAdresId = adres_id;
 
-    // 1. Adres İşlemleri (Zorunlu sehir ve ilce alanları dahil)
+    // 1. Adres İşlemleri (Hatalı sütunlar kaldırıldı, sadece temel alanlar kaldı)
     if (!nihaiAdresId && addressInfo) {
       const yeniAdresResult = await client.query(`
-                INSERT INTO public.adres (musteri_id, adres_basligi, tam_adres, posta_kodu, sehir, ilce)
-                VALUES ($1, $2, $3, $4, $5, $6)
+                INSERT INTO public.adres (musteri_id, adres_basligi, tam_adres, posta_kodu)
+                VALUES ($1, $2, $3, $4)
                 RETURNING id
-            `, [musteriId, addressInfo.baslik, addressInfo.detay, addressInfo.postaKodu, addressInfo.sehir, addressInfo.ilce]);
+            `, [musteriId, addressInfo.baslik, addressInfo.detay, addressInfo.postaKodu]);
       nihaiAdresId = yeniAdresResult.rows[0].id;
     }
 
-    // 2. Sepet Doğrulama
     const sepet = items || [];
     if (sepet.length === 0) {
       await client.query("ROLLBACK");
-      return res.status(400).json({ mesaj: "Sepet boş, sipariş oluşturulamaz." });
+      return res.status(400).json({ mesaj: "Sepet boş." });
     }
 
-    // 3. Misafir Bilgileri (JSONB)
     const misafirData = isGuest ? {
       ad: customerInfo?.ad,
       soyad: customerInfo?.soyad,
@@ -51,16 +42,16 @@ exports.createOrder = async (req, res) => {
       telefon: customerInfo?.telefon
     } : null;
 
-    // 4. Sipariş Kaydı
+    // 2. Sipariş Kaydı
     const siparisResult = await client.query(`
-            INSERT INTO public.siparis (musteri_id, adres_id, toplam_tutar, durum, misafir_bilgileri, odeme_yontemi, notlar)
-            VALUES ($1, $2, $3, 'Hazırlanıyor', $4, $5, $6)
+            INSERT INTO public.siparis (musteri_id, adres_id, toplam_tutar, durum, misafir_bilgileri, odeme_yontemi)
+            VALUES ($1, $2, $3, 'Hazırlanıyor', $4, $5)
             RETURNING id
-        `, [musteriId, nihaiAdresId, totalPrice, misafirData, odeme_yontemi, notlar || ""]);
+        `, [musteriId, nihaiAdresId, totalPrice, misafirData, odeme_yontemi]);
 
     const siparisId = siparisResult.rows[0].id;
 
-    // 5. Sipariş Detaylarını Ekleme
+    // 3. Sipariş Detaylarını Ekleme
     for (const item of sepet) {
       await client.query(`
                 INSERT INTO public.siparis_detay (siparis_id, urun_id, adet, birim_fiyat)
@@ -68,13 +59,8 @@ exports.createOrder = async (req, res) => {
             `, [siparisId, item.urun_id || item.id, item.miktar || item.adet || 1, item.fiyat || 0]);
     }
 
-    // 6. Kayıtlı Kullanıcıların Sepetini Sıfırlama
     if (musteriId) {
-      await client.query(`
-                UPDATE public.sepet_detay
-                SET sepet_icerigi = '[]'::jsonb, guncelleme_tarihi = CURRENT_TIMESTAMP
-                WHERE musteri_id = $1
-            `, [musteriId]);
+      await client.query(`UPDATE public.sepet_detay SET sepet_icerigi = '[]'::jsonb WHERE musteri_id = $1`, [musteriId]);
     }
 
     await client.query("COMMIT");
@@ -88,8 +74,6 @@ exports.createOrder = async (req, res) => {
     client.release();
   }
 };
-
-// --- KULLANICI FONKSİYONLARI ---
 
 // Kullanıcının kendi siparişlerini listeler
 exports.getMyOrders = async (req, res) => {

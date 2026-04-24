@@ -21,12 +21,10 @@ export default function Odeme() {
     const now = new Date();
     const currentYear = now.getFullYear();
 
-    // --- STATE YÖNETİMİ ---
     const [customerData, setCustomerData] = useState({ ad: "", soyad: "", email: "", telefon: "" });
     const [addressData, setAddressData] = useState({ baslik: "", sehir: "", ilce: "", detay: "", postaKodu: "" });
     const [paymentMethod, setPaymentMethod] = useState("kredi_karti");
     const [cardDetails, setCardDetails] = useState({ number: "", holder: "", month: "", year: "", cvv: "" });
-    const [orderNotes, setOrderNotes] = useState(""); // Notlar state'i eklendi
 
     const [hata, setHata] = useState({ gorunur: false, mesaj: "" });
     const [isSuccess, setIsSuccess] = useState(false);
@@ -34,7 +32,6 @@ export default function Odeme() {
     const [orderId, setOrderId] = useState("");
     const [guestOrderPdfData, setGuestOrderPdfData] = useState(null);
 
-    // --- OTOMATİK DOLDURMA ---
     useEffect(() => {
         if (user) {
             setCustomerData({
@@ -47,7 +44,7 @@ export default function Odeme() {
             const adresleriGetir = async () => {
                 try {
                     const res = await api.get("/addresses", {
-                        headers: token ? { Authorization: `Bearer ${token}` } : {}
+                        headers: { Authorization: `Bearer ${token}` }
                     });
                     if (res.data && res.data.length > 0) {
                         const ilkAdres = res.data[0];
@@ -55,8 +52,8 @@ export default function Odeme() {
                             baslik: ilkAdres.baslik || "",
                             sehir: ilkAdres.sehir || "",
                             ilce: ilkAdres.ilce || "",
-                            detay: ilkAdres.detay || ilkAdres.tam_adres || "",
-                            postaKodu: (ilkAdres.posta_kodu || "").toString()
+                            detay: ilkAdres.detay || "",
+                            postaKodu: (ilkAdres.posta_kodu || ilkAdres.postaKodu || "").toString()
                         });
                     }
                 } catch (err) {
@@ -77,7 +74,6 @@ export default function Odeme() {
         setIsProcessing(false);
     };
 
-    // --- INPUT FİLTRELERİ ---
     const handleSadeceHarfGiris = (deger, stateObj, setState, alan) => {
         const temizVeri = deger.replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ\s]/g, "");
         setState({ ...stateObj, [alan]: temizVeri });
@@ -94,20 +90,34 @@ export default function Odeme() {
         setAddressData({ ...addressData, postaKodu: temizVeri });
     };
 
-    // --- SİPARİŞ İŞLEME ---
     const handleProcessOrder = async (e) => {
         if (e) e.preventDefault();
         if (isProcessing) return;
         setIsProcessing(true);
 
-        // Validasyonlar
         const isimRegex = /^[a-zA-ZçğıöşüÇĞİÖŞÜ\s]{2,50}$/;
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+        const postaKoduRegex = /^[0-9]{5}$/;
+
         if (!isimRegex.test(customerData.ad)) return hataGoster("Ad hatalı.");
         if (!isimRegex.test(customerData.soyad)) return hataGoster("Soyad hatalı.");
-        if (customerData.telefon.length !== 11) return hataGoster("Telefon 11 haneli olmalıdır.");
-        if (!addressData.sehir || !addressData.ilce || !addressData.detay) return hataGoster("Adres bilgileri eksik.");
+        if (!emailRegex.test(customerData.email)) return hataGoster("E-posta hatalı.");
+        if (customerData.telefon.length !== 11) return hataGoster("Telefon hatalı.");
+        if (!addressData.baslik.trim()) return hataGoster("Adres başlığı eksik.");
+        if (!isimRegex.test(addressData.sehir)) return hataGoster("Şehir hatalı.");
+        if (!isimRegex.test(addressData.ilce)) return hataGoster("İlçe hatalı.");
+        if (!addressData.detay.trim()) return hataGoster("Adres detayı eksik.");
+        if (!postaKoduRegex.test(addressData.postaKodu)) return hataGoster("Posta kodu hatalı.");
 
-        // Backend ile tam uyumlu ürün listesi
+        if (paymentMethod === "kredi_karti") {
+            if (!isimRegex.test(cardDetails.holder)) return hataGoster("Kart ismi hatalı.");
+            if (cardDetails.number.length !== 16) return hataGoster("Kart numarası hatalı.");
+            if (!cardDetails.month || !cardDetails.year || cardDetails.cvv.length !== 3) {
+                return hataGoster("Kart bilgileri eksik.");
+            }
+        }
+
+        // Backend ile tam uyumlu temiz ürün listesi
         const sepetUrunleri = (state.SepetNesneleri || []).map((item) => ({
             urun_id: item.id || item.urun_id,
             fiyat: Number(item.fiyat || 0),
@@ -118,13 +128,12 @@ export default function Odeme() {
         const toplamTutar = sepetUrunleri.reduce((acc, item) => acc + (item.fiyat * item.miktar), 0);
 
         const siparisPaketi = {
-            isGuest: !user,
+            isGuest: !user && !token,
             customerInfo: customerData,
             addressInfo: addressData,
             odeme_yontemi: paymentMethod === "kredi_karti" ? "KREDİ" : "HAVALE",
             items: sepetUrunleri,
-            totalPrice: toplamTutar,
-            notlar: orderNotes // Yeni sütun gönderiliyor
+            totalPrice: toplamTutar
         };
 
         try {
@@ -142,7 +151,7 @@ export default function Odeme() {
                         siparis_tarihi: new Date().toISOString(),
                         durum: "Hazırlanıyor",
                         toplam_tutar: toplamTutar,
-                        odeme_yontemi: siparisPaketi.odeme_yontemi
+                        odeme_yontemi: paymentMethod === "kredi_karti" ? "KREDİ KARTI" : "HAVALE / EFT"
                     },
                     musteri: { ...customerData },
                     adres: { ...addressData },
@@ -164,7 +173,7 @@ export default function Odeme() {
     const inputStyle = "w-full p-3 border border-[#d2b48c] rounded-lg outline-none focus:ring-2 focus:ring-[#4d3a2e] bg-white text-[#4d3a2e]";
 
     return (
-        <div className="p-10 bg-[#fdfbf7] min-h-screen relative text-[#4d3a2e]">
+        <div className="p-10 bg-[#fdfbf7] min-h-screen relative">
             {isSuccess && (
                 <SiparisBasarili
                     orderId={orderId}
@@ -184,39 +193,56 @@ export default function Odeme() {
 
             <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-10">
                 <form onSubmit={handleProcessOrder} className="lg:col-span-2 space-y-8 bg-white p-8 rounded-2xl shadow-sm border border-[#ede6ca]">
-
-                    {/* 1. Müşteri Bilgileri */}
                     <section className="space-y-6">
-                        <h2 className="text-2xl font-serif font-bold">1. Müşteri Bilgileri</h2>
+                        <h2 className="text-2xl font-serif font-bold text-[#4d3a2e]">1. Müşteri Bilgileri</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                            <input type="text" placeholder="Ad" className={inputStyle} value={customerData.ad} onChange={(e) => handleSadeceHarfGiris(e.target.value, customerData, setCustomerData, "ad")} />
-                            <input type="text" placeholder="Soyad" className={inputStyle} value={customerData.soyad} onChange={(e) => handleSadeceHarfGiris(e.target.value, customerData, setCustomerData, "soyad")} />
-                            <input type="email" placeholder="E-Posta" className={inputStyle} value={customerData.email} onChange={(e) => setCustomerData({ ...customerData, email: e.target.value })} />
-                            <input type="tel" placeholder="Telefon (05xx...)" value={customerData.telefon} className={inputStyle} onChange={(e) => handleTelefonGiris(e.target.value)} />
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold text-[#978175] uppercase ml-1">Ad</label>
+                                <input type="text" className={inputStyle} value={customerData.ad} onChange={(e) => handleSadeceHarfGiris(e.target.value, customerData, setCustomerData, "ad")} />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold text-[#978175] uppercase ml-1">Soyad</label>
+                                <input type="text" className={inputStyle} value={customerData.soyad} onChange={(e) => handleSadeceHarfGiris(e.target.value, customerData, setCustomerData, "soyad")} />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold text-[#978175] uppercase ml-1">E-Posta</label>
+                                <input type="email" className={inputStyle} value={customerData.email} onChange={(e) => setCustomerData({ ...customerData, email: e.target.value })} />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold text-[#978175] uppercase ml-1">Telefon</label>
+                                <input type="tel" value={customerData.telefon} className={inputStyle} onChange={(e) => handleTelefonGiris(e.target.value)} />
+                            </div>
                         </div>
                     </section>
 
-                    {/* 2. Teslimat Adresi */}
                     <section className="pt-8 border-t border-gray-100 space-y-6">
-                        <h2 className="text-2xl font-serif font-bold">2. Teslimat Adresi</h2>
+                        <h2 className="text-2xl font-serif font-bold text-[#4d3a2e]">2. Teslimat Adresi</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                            <input type="text" placeholder="Adres Başlığı (Ev, İş...)" className={inputStyle} value={addressData.baslik} onChange={(e) => setAddressData({ ...addressData, baslik: e.target.value })} />
-                            <input type="text" placeholder="Posta Kodu" value={addressData.postaKodu} className={inputStyle} onChange={(e) => handlePostaKoduGiris(e.target.value)} />
-                            <input type="text" placeholder="Şehir" className={inputStyle} value={addressData.sehir} onChange={(e) => handleSadeceHarfGiris(e.target.value, addressData, setAddressData, "sehir")} />
-                            <input type="text" placeholder="İlçe" className={inputStyle} value={addressData.ilce} onChange={(e) => handleSadeceHarfGiris(e.target.value, addressData, setAddressData, "ilce")} />
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold text-[#978175] uppercase ml-1">Adres Başlığı</label>
+                                <input type="text" className={inputStyle} value={addressData.baslik} onChange={(e) => setAddressData({ ...addressData, baslik: e.target.value })} />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold text-[#978175] uppercase ml-1">Posta Kodu</label>
+                                <input type="text" value={addressData.postaKodu} className={inputStyle} onChange={(e) => handlePostaKoduGiris(e.target.value)} />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold text-[#978175] uppercase ml-1">Şehir</label>
+                                <input type="text" className={inputStyle} value={addressData.sehir} onChange={(e) => handleSadeceHarfGiris(e.target.value, addressData, setAddressData, "sehir")} />
+                            </div>
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold text-[#978175] uppercase ml-1">İlçe</label>
+                                <input type="text" className={inputStyle} value={addressData.ilce} onChange={(e) => handleSadeceHarfGiris(e.target.value, addressData, setAddressData, "ilce")} />
+                            </div>
                         </div>
-                        <textarea placeholder="Tam Adres Detayı" className={`${inputStyle} h-24 resize-none`} value={addressData.detay} onChange={(e) => setAddressData({ ...addressData, detay: e.target.value })} />
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-[#978175] uppercase ml-1">Açık Adres</label>
+                            <textarea className={`${inputStyle} h-24 resize-none`} value={addressData.detay} onChange={(e) => setAddressData({ ...addressData, detay: e.target.value })} />
+                        </div>
                     </section>
 
-                    {/* 3. Sipariş Notu (Admin Paneli İçin) */}
-                    <section className="pt-8 border-t border-gray-100 space-y-4">
-                        <h2 className="text-2xl font-serif font-bold">3. Sipariş Notu</h2>
-                        <textarea placeholder="Siparişinizle ilgili belirtmek istediğiniz bir not var mı?" className={`${inputStyle} h-20 resize-none`} value={orderNotes} onChange={(e) => setOrderNotes(e.target.value)} />
-                    </section>
-
-                    {/* 4. Ödeme Yöntemi */}
                     <section className="pt-8 border-t border-gray-100">
-                        <h2 className="text-2xl font-serif font-bold mb-6">4. Ödeme Yöntemi</h2>
+                        <h2 className="text-2xl font-serif font-bold text-[#4d3a2e] mb-6">3. Ödeme Yöntemi</h2>
                         <div className="flex gap-4 mb-8">
                             {["kredi_karti", "havale"].map((method) => (
                                 <button key={method} type="button" onClick={() => setPaymentMethod(method)}
@@ -228,18 +254,36 @@ export default function Odeme() {
 
                         {paymentMethod === "kredi_karti" && (
                             <div className="bg-gray-50 p-6 rounded-2xl space-y-5 border border-[#ede6ca]">
-                                <input type="text" placeholder="Kart Sahibi" className={`${inputStyle} uppercase`} value={cardDetails.holder} onChange={(e) => handleSadeceHarfGiris(e.target.value, cardDetails, setCardDetails, "holder")} />
-                                <input type="text" placeholder="Kart Numarası" value={cardDetails.number} className={inputStyle} onChange={(e) => setCardDetails({ ...cardDetails, number: e.target.value.replace(/\D/g, "").slice(0, 16) })} />
+                                <div className="space-y-1">
+                                    <label className="text-xs font-bold text-[#978175] uppercase ml-1">Kart Sahibi</label>
+                                    <input type="text" className={`${inputStyle} uppercase`} value={cardDetails.holder}
+                                        onChange={(e) => handleSadeceHarfGiris(e.target.value, cardDetails, setCardDetails, "holder")} />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs font-bold text-[#978175] uppercase ml-1">Kart Numarası</label>
+                                    <input type="text" value={cardDetails.number} className={inputStyle}
+                                        onChange={(e) => setCardDetails({ ...cardDetails, number: e.target.value.replace(/\D/g, "").slice(0, 16) })} />
+                                </div>
                                 <div className="grid grid-cols-3 gap-5">
-                                    <select className={inputStyle} value={cardDetails.month} onChange={(e) => setCardDetails({ ...cardDetails, month: e.target.value })}>
-                                        <option value="">Ay</option>
-                                        {months.map(m => <option key={m} value={m}>{m.toString().padStart(2, '0')}</option>)}
-                                    </select>
-                                    <select className={inputStyle} value={cardDetails.year} onChange={(e) => setCardDetails({ ...cardDetails, year: e.target.value })}>
-                                        <option value="">Yıl</option>
-                                        {years.map(y => <option key={y} value={y}>{y}</option>)}
-                                    </select>
-                                    <input type="text" placeholder="CVV" value={cardDetails.cvv} className={inputStyle} onChange={(e) => setCardDetails({ ...cardDetails, cvv: e.target.value.replace(/\D/g, "").slice(0, 3) })} />
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-bold text-[#978175] uppercase ml-1">Ay</label>
+                                        <select className={inputStyle} value={cardDetails.month} onChange={(e) => setCardDetails({ ...cardDetails, month: e.target.value })}>
+                                            <option value="">Seç</option>
+                                            {months.map(m => <option key={m} value={m}>{m.toString().padStart(2, '0')}</option>)}
+                                        </select>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-bold text-[#978175] uppercase ml-1">Yıl</label>
+                                        <select className={inputStyle} value={cardDetails.year} onChange={(e) => setCardDetails({ ...cardDetails, year: e.target.value })}>
+                                            <option value="">Seç</option>
+                                            {years.map(y => <option key={y} value={y}>{y}</option>)}
+                                        </select>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-bold text-[#978175] uppercase ml-1">CVV</label>
+                                        <input type="text" value={cardDetails.cvv} className={inputStyle}
+                                            onChange={(e) => setCardDetails({ ...cardDetails, cvv: e.target.value.replace(/\D/g, "").slice(0, 3) })} />
+                                    </div>
                                 </div>
                             </div>
                         )}
