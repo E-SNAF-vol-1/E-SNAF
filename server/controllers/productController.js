@@ -3,12 +3,6 @@ const pool = require("../db");
 // Yardımcı Fonksiyon: DB satırlarını frontend formatına dönüştürür
 function mapProduct(row) {
   if (!row) return null;
-
-  // Resim yolu kontrolü: Eğer yol başında '/' yoksa ekler, boşsa varsayılan resme döner
-  const gorsel = row.gorsel_yolu
-    ? (row.gorsel_yolu.startsWith('/') ? row.gorsel_yolu : '/' + row.gorsel_yolu)
-    : "/images/bos.jpg";
-
   return {
     id: row.id,
     isim: row.urun_adi,
@@ -17,44 +11,30 @@ function mapProduct(row) {
     fiyat: row.fiyat ? Number(row.fiyat) : 0,
     stok: row.stok_adedi || 0,
     kategori: row.kategori_adi || "Genel",
-    altKategori: row.alt_kategori_adi || "Genel", // Tüm sorgularda bu ismi sabitledik
-    resim: gorsel,
+    altKategori: row.alt_kategori_adi || "Genel", // Sütun adını burada sabitledik
+    resim: row.gorsel_yolu || "/images/bos.jpg",
     renk: "Standart"
   };
 }
 
-// 1. Canlı Arama (Dropdown için hızlı sonuçlar)
+// 1. Canlı Arama
 exports.liveSearch = async (req, res) => {
   const { q } = req.query;
   const queryTerm = `%${q}%`;
-
-  if (!q || q.length < 2) {
-    return res.json({ urunler: [], kategoriler: [], altKategoriler: [] });
-  }
+  if (!q || q.length < 2) return res.json({ urunler: [], kategoriler: [], altKategoriler: [] });
 
   try {
-    // Ürünlerde Ara (İlk 5 sonuç)
     const urunler = await pool.query(`
       SELECT u.id, u.urun_adi, u.fiyat, k.kategori_adi, ak.alt_k_adi as alt_kategori_adi,
       (SELECT ug.gorsel_yolu FROM public.urun_gorsel ug WHERE ug.urun_id = u.id LIMIT 1) as gorsel_yolu
       FROM public.urun u
       LEFT JOIN public.alt_kategori ak ON ak.id = u.alt_kategori_id
       LEFT JOIN public.kategori k ON k.id = ak.ana_kategori_id
-      WHERE u.urun_adi ILIKE $1 
-      LIMIT 5
+      WHERE u.urun_adi ILIKE $1 LIMIT 5
     `, [queryTerm]);
 
-    // Kategorilerde Ara (İlk 3 sonuç)
-    const kategoriler = await pool.query(
-      "SELECT id, kategori_adi as ad FROM public.kategori WHERE kategori_adi ILIKE $1 LIMIT 3",
-      [queryTerm]
-    );
-
-    // Alt Kategorilerde Ara (İlk 3 sonuç)
-    const altKategoriler = await pool.query(
-      "SELECT id, alt_k_adi as ad FROM public.alt_kategori WHERE alt_k_adi ILIKE $1 LIMIT 3",
-      [queryTerm]
-    );
+    const kategoriler = await pool.query("SELECT id, kategori_adi as ad FROM public.kategori WHERE kategori_adi ILIKE $1 LIMIT 3", [queryTerm]);
+    const altKategoriler = await pool.query("SELECT id, alt_k_adi as ad FROM public.alt_kategori WHERE alt_k_adi ILIKE $1 LIMIT 3", [queryTerm]);
 
     res.json({
       urunler: urunler.rows.map(mapProduct),
@@ -62,43 +42,37 @@ exports.liveSearch = async (req, res) => {
       altKategoriler: altKategoriler.rows
     });
   } catch (err) {
-    console.error("Canlı arama hatası:", err);
-    res.status(500).json({ mesaj: "Canlı arama hatası" });
+    console.error("Canlı Arama Hatası:", err);
+    res.status(500).json({ mesaj: "Hata oluştu" });
   }
 };
 
-// 2. Genel Arama (Enter'a basınca tüm sonuçları getirir)
+// 2. Genel Arama
 exports.searchProducts = async (req, res) => {
   const { q } = req.query;
   const queryTerm = `%${q}%`;
-
   try {
     const query = `
-      SELECT u.id, u.urun_adi, u.aciklama, u.fiyat, u.stok_adedi, u.eklenme_tarihi, 
-      k.kategori_adi, ak.alt_k_adi as alt_kategori_adi,
+      SELECT u.id, u.urun_adi, u.aciklama, u.fiyat, u.stok_adedi, k.kategori_adi, ak.alt_k_adi as alt_kategori_adi,
       (SELECT ug.gorsel_yolu FROM public.urun_gorsel ug WHERE ug.urun_id = u.id ORDER BY ug.ana_gorsel_mi DESC LIMIT 1) as gorsel_yolu
       FROM public.urun u
       LEFT JOIN public.alt_kategori ak ON ak.id = u.alt_kategori_id
       LEFT JOIN public.kategori k ON k.id = ak.ana_kategori_id
-      WHERE u.urun_adi ILIKE $1 
-         OR u.aciklama ILIKE $1 
-         OR k.kategori_adi ILIKE $1 
-         OR ak.alt_k_adi ILIKE $1
+      WHERE u.urun_adi ILIKE $1 OR u.aciklama ILIKE $1 OR k.kategori_adi ILIKE $1 OR ak.alt_k_adi ILIKE $1
       ORDER BY u.eklenme_tarihi DESC
     `;
     const result = await pool.query(query, [queryTerm]);
     res.json(result.rows.map(mapProduct));
   } catch (err) {
-    console.error("Genel arama hatası:", err);
-    res.status(500).json({ mesaj: "Arama hatası" });
+    console.error("Arama Hatası:", err);
+    res.status(500).json({ mesaj: "Hata" });
   }
 };
 
-// 3. Mevcut Tüm Ürünleri Getir (Filtreleme Destekli)
+// 3. Tüm Ürünleri Getir
 exports.getAll = async (req, res) => {
   try {
     const { q, kategori_id, alt_kategori_id } = req.query;
-
     let query = `
       SELECT u.id, u.urun_adi, u.aciklama, u.fiyat, u.stok_adedi, k.kategori_adi, ak.alt_k_adi as alt_kategori_adi,
       (SELECT ug.gorsel_yolu FROM public.urun_gorsel ug WHERE ug.urun_id = u.id ORDER BY ug.ana_gorsel_mi DESC LIMIT 1) AS gorsel_yolu
@@ -107,34 +81,17 @@ exports.getAll = async (req, res) => {
       LEFT JOIN public.kategori k ON k.id = ak.ana_kategori_id
       WHERE 1=1
     `;
-
     const params = [];
     let i = 1;
-
-    if (q) {
-      query += ` AND (LOWER(u.urun_adi) LIKE LOWER($${i}) OR LOWER(COALESCE(u.aciklama, '')) LIKE LOWER($${i}))`;
-      params.push(`%${q}%`);
-      i++;
-    }
-
-    if (kategori_id) {
-      query += ` AND k.id = $${i}`;
-      params.push(kategori_id);
-      i++;
-    }
-
-    if (alt_kategori_id) {
-      query += ` AND ak.id = $${i}`;
-      params.push(alt_kategori_id);
-      i++;
-    }
-
+    if (q) { query += ` AND (LOWER(u.urun_adi) LIKE LOWER($${i}) OR LOWER(COALESCE(u.aciklama, '')) LIKE LOWER($${i}))`; params.push(`%${q}%`); i++; }
+    if (kategori_id) { query += ` AND k.id = $${i}`; params.push(kategori_id); i++; }
+    if (alt_kategori_id) { query += ` AND ak.id = $${i}`; params.push(alt_kategori_id); i++; }
     query += ` ORDER BY u.eklenme_tarihi DESC`;
     const result = await pool.query(query, params);
     res.json(result.rows.map(mapProduct));
   } catch (err) {
-    console.error("Ürün listeleme hatası:", err);
-    res.status(500).json({ mesaj: "Ürünler alınamadı" });
+    console.error("Ürün Listeleme Hatası:", err);
+    res.status(500).json({ mesaj: "Hata" });
   }
 };
 
