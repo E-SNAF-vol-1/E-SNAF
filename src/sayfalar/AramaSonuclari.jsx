@@ -1,67 +1,104 @@
-const pool = require("../db");
+import React, { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
+import axios from "axios";
+import UrunKartlari from "../components/UrunKartlari";
 
-// Yardımcı Fonksiyon: DB satırlarını frontend formatına dönüştürür
-function mapProduct(row) {
-    if (!row) return null;
-    return {
-        id: row.id,
-        isim: row.urun_adi || "İsimsiz Ürün",
-        ad: row.urun_adi || "İsimsiz Ürün",
-        aciklama: row.aciklama || "",
-        fiyat: row.fiyat ? Number(row.fiyat) : 0,
-        stok: row.stok_adedi || 0,
-        kategori: row.kategori_adi || "Genel", // Hata veren kısım burasıydı, artık boş kalamaz
-        altKategori: row.alt_kategori_adi || "Genel",
-        resim: row.gorsel_yolu || "/images/bos.jpg",
-        renk: "Standart"
-    };
+// Merkezi API yapılandırması
+const api = axios.create({
+    baseURL: "https://esnaf.apps.srv.aykutdurgut.com.tr/api"
+});
+
+export default function AramaSonuclari() {
+    const location = useLocation();
+    const queryParams = new URLSearchParams(location.search);
+    const aramaSorgusu = queryParams.get("q") || ""; // Boş sorgu koruması
+
+    const [sonuclar, setSonuclar] = useState([]);
+    const [yukleniyor, setYukleniyor] = useState(false);
+    const [hata, setHata] = useState(null);
+
+    useEffect(() => {
+        const verileriGetir = async () => {
+            // Sorgu çok kısaysa veya boşsa boş sonuç dön
+            if (!aramaSorgusu.trim() || aramaSorgusu.length < 2) {
+                setSonuclar([]);
+                return;
+            }
+
+            setYukleniyor(true);
+            setHata(null);
+
+            try {
+                // Backend'deki genel arama endpoint'ine istek atıyoruz
+                const res = await api.get(`/products/search?q=${encodeURIComponent(aramaSorgusu)}`);
+
+                // Gelen verinin dizi olduğundan emin oluyoruz
+                if (Array.isArray(res.data)) {
+                    setSonuclar(res.data);
+                } else {
+                    setSonuclar([]);
+                }
+            } catch (err) {
+                console.error("Arama sonuçları getirilemedi:", err);
+                setHata("Sonuçlar yüklenirken bir sorun oluştu.");
+            } finally {
+                setYukleniyor(false);
+            }
+        };
+
+        verileriGetir();
+    }, [aramaSorgusu]);
+
+    return (
+        <div className="max-w-7xl mx-auto px-4 py-10 min-h-screen">
+            {/* Başlık Bölümü */}
+            <div className="mb-8 border-b border-[#f0ebe0] pb-6">
+                <h1 className="text-2xl md:text-3xl font-serif text-[#5d4037]">
+                    {aramaSorgusu ? (
+                        <>
+                            "<span className="font-bold italic text-[#d2b48c]">{aramaSorgusu}</span>" için sonuçlar
+                        </>
+                    ) : (
+                        "Tüm Ürünler"
+                    )}
+                </h1>
+                {!yukleniyor && sonuclar.length > 0 && (
+                    <p className="text-sm text-gray-500 mt-2">{sonuclar.length} ürün bulundu.</p>
+                )}
+            </div>
+
+            {/* İçerik Alanı */}
+            {yukleniyor ? (
+                <div className="flex flex-col justify-center items-center py-32">
+                    <i className="bx bx-loader-alt animate-spin text-5xl text-[#d2b48c]"></i>
+                    <p className="mt-4 text-[#a68b6d] font-light italic">Aranıyor, lütfen bekleyin</p>
+                </div>
+            ) : hata ? (
+                <div className="text-center py-20 bg-red-50 rounded-3xl border border-red-100 text-red-600">
+                    <i className="bx bx-error-circle text-5xl mb-4"></i>
+                    <p>{hata}</p>
+                </div>
+            ) : sonuclar.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                    {sonuclar.map((urun) => (
+                        // urun nesnesi varsa ve id'si varsa render et (Çifte koruma)
+                        urun && urun.id && (
+                            <UrunKartlari key={urun.id} urun={urun} gorunumModu="grid" />
+                        )
+                    ))}
+                </div>
+            ) : (
+                <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-[#d2b48c] shadow-sm">
+                    <div className="w-20 h-20 bg-[#f8f5eb] rounded-full flex items-center justify-center mx-auto mb-6">
+                        <i className="bx bx-search-alt text-4xl text-[#d2b48c]"></i>
+                    </div>
+                    <h3 className="text-lg font-bold text-[#5d4037] mb-2">E-SNAF'ta Bulamadık</h3>
+                    <p className="text-gray-500 max-w-xs mx-auto">
+                        "<span className="font-semibold">{aramaSorgusu}</span>" ile eşleşen bir ürünümüz yok.
+                        Farklı kelimelerle tekrar denemek ister misiniz?
+                    </p>
+                </div>
+            )}
+        </div>
+    );
 }
-
-// Canlı Arama (Dropdown için)
-exports.liveSearch = async (req, res) => {
-    const { q } = req.query;
-    const queryTerm = `%${q}%`;
-    if (!q || q.length < 2) return res.json({ urunler: [], kategoriler: [], altKategoriler: [] });
-
-    try {
-        const urunler = await pool.query(`
-      SELECT u.id, u.urun_adi, u.fiyat, k.kategori_adi, ak.alt_kategori_adi,
-      (SELECT ug.gorsel_yolu FROM public.urun_gorsel ug WHERE ug.urun_id = u.id LIMIT 1) as gorsel_yolu
-      FROM public.urun u
-      LEFT JOIN public.alt_kategori ak ON ak.id = u.alt_kategori_id
-      LEFT JOIN public.kategori k ON k.id = ak.ana_kategori_id
-      WHERE u.urun_adi ILIKE $1 LIMIT 5
-    `, [queryTerm]);
-
-        res.json({
-            urunler: urunler.rows.map(mapProduct),
-            kategoriler: [], // Hata almamak için boş dizi gönderiyoruz
-            altKategoriler: []
-        });
-    } catch (err) {
-        console.error("Canlı Arama Hatası:", err);
-        res.status(500).json({ mesaj: "Hata" });
-    }
-};
-
-// Genel Arama (Sayfa için)
-exports.searchProducts = async (req, res) => {
-    const { q } = req.query;
-    const queryTerm = `%${q}%`;
-    try {
-        const query = `
-      SELECT u.id, u.urun_adi, u.aciklama, u.fiyat, u.stok_adedi, k.kategori_adi, ak.alt_kategori_adi,
-      (SELECT ug.gorsel_yolu FROM public.urun_gorsel ug WHERE ug.urun_id = u.id ORDER BY ug.ana_gorsel_mi DESC LIMIT 1) as gorsel_yolu
-      FROM public.urun u
-      LEFT JOIN public.alt_kategori ak ON ak.id = u.alt_kategori_id
-      LEFT JOIN public.kategori k ON k.id = ak.ana_kategori_id
-      WHERE u.urun_adi ILIKE $1 OR u.aciklama ILIKE $1 OR k.kategori_adi ILIKE $1 OR ak.alt_kategori_adi ILIKE $1
-      ORDER BY u.eklenme_tarihi DESC
-    `;
-        const result = await pool.query(query, [queryTerm]);
-        res.json(result.rows.map(mapProduct));
-    } catch (err) {
-        console.error("Arama Hatası:", err);
-        res.status(500).json({ mesaj: "Hata" });
-    }
-};

@@ -23,7 +23,8 @@ export default function Baslik() {
   // Canlı Arama Debounce Mekanizması
   useEffect(() => {
     const aramaYap = async () => {
-      if (sorgu.trim().length < 2) {
+      const temizSorgu = sorgu.trim();
+      if (temizSorgu.length < 2) {
         setSonuclar({ urunler: [], kategoriler: [], altKategoriler: [] });
         setDropdownAcik(false);
         return;
@@ -31,12 +32,17 @@ export default function Baslik() {
 
       setYukleniyor(true);
       try {
-        // Rota düzeltildi: /products/search/live
-        const res = await api.get(`/products/search/live?q=${encodeURIComponent(sorgu)}`);
-        setSonuclar(res.data);
+        const res = await api.get(`/products/search/live?q=${encodeURIComponent(temizSorgu)}`);
+        // Backend'den gelen verileri güvenli bir şekilde state'e aktarıyoruz
+        setSonuclar({
+          urunler: res.data.urunler || [],
+          kategoriler: res.data.kategoriler || [],
+          altKategoriler: res.data.altKategoriler || []
+        });
         setDropdownAcik(true);
       } catch (err) {
         console.error("Canlı arama hatası:", err);
+        setSonuclar({ urunler: [], kategoriler: [], altKategoriler: [] });
       } finally {
         setYukleniyor(false);
       }
@@ -59,10 +65,10 @@ export default function Baslik() {
 
   const handleSearch = (e) => {
     e.preventDefault();
-    if (sorgu.trim()) {
+    const temizSorgu = sorgu.trim();
+    if (temizSorgu) {
       setDropdownAcik(false);
-      // Enter'a basıldığında genel arama sayfasına q parametresiyle gider
-      navigate(`/arama?q=${encodeURIComponent(sorgu)}`);
+      navigate(`/arama?q=${encodeURIComponent(temizSorgu)}`);
     }
   };
 
@@ -70,6 +76,11 @@ export default function Baslik() {
     setMenuAcik(false);
     await cikisYap();
     navigate("/");
+  };
+
+  // URL güvenli hale getirici (Slugify)
+  const slugify = (text) => {
+    return (text || 'genel').toString().toLowerCase().replace(/\s+/g, '-');
   };
 
   const buttonStyle = "flex items-center justify-center gap-2 px-4 py-2 rounded-full transition-all duration-300 cursor-pointer hover:bg-[#5d4037] hover:text-[#f5f5dc] font-medium text-sm";
@@ -94,7 +105,7 @@ export default function Baslik() {
                 placeholder="Ürün, kategori veya marka ara..."
                 value={sorgu}
                 onChange={(e) => setSorgu(e.target.value)}
-                onFocus={() => sorgu.length >= 2 && setDropdownAcik(true)}
+                onFocus={() => sorgu.trim().length >= 2 && setDropdownAcik(true)}
                 className="w-full bg-white border border-[#d2b48c]/20 rounded-full py-2.5 px-6 focus:outline-none focus:ring-2 focus:ring-[#5d4037]/10 text-sm font-light shadow-sm"
               />
               <button type="submit" className="absolute right-4 top-1/2 -translate-y-1/2 opacity-40 hover:opacity-100 transition-opacity">
@@ -106,12 +117,12 @@ export default function Baslik() {
             {dropdownAcik && (
               <div className="absolute top-full left-0 w-full mt-2 bg-white rounded-2xl shadow-2xl border border-[#d2b48c]/20 overflow-hidden z-[60] max-h-[450px] overflow-y-auto">
 
-                {/* Kategoriler ve Alt Kategoriler Bölümü */}
-                {(sonuclar.kategoriler?.length > 0 || sonuclar.altKategoriler?.length > 0) && (
+                {/* Kategoriler Bölümü */}
+                {(sonuclar.kategoriler.length > 0 || sonuclar.altKategoriler.length > 0) && (
                   <div className="p-3 border-b border-gray-50">
                     <p className="text-[10px] font-bold text-gray-400 uppercase px-3 mb-2 tracking-wider">Hızlı Kategoriler</p>
 
-                    {sonuclar.kategoriler?.map(kat => (
+                    {sonuclar.kategoriler.map(kat => (
                       <div key={`kat-${kat.id}`} onClick={() => { navigate(`/arama?kategori=${kat.id}`); setDropdownAcik(false); }} className="flex items-center gap-3 p-2 hover:bg-[#f8f5eb] rounded-xl cursor-pointer group">
                         <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-[#d2b48c] group-hover:bg-[#5d4037] group-hover:text-white transition-all">
                           <i className="bx bx-category-alt text-lg"></i>
@@ -120,7 +131,7 @@ export default function Baslik() {
                       </div>
                     ))}
 
-                    {sonuclar.altKategoriler?.map(alt => (
+                    {sonuclar.altKategoriler.map(alt => (
                       <div key={`alt-${alt.id}`} onClick={() => { navigate(`/arama?altKategori=${alt.id}`); setDropdownAcik(false); }} className="flex items-center gap-3 p-2 hover:bg-[#f8f5eb] rounded-xl cursor-pointer group">
                         <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-[#d2b48c] group-hover:bg-[#5d4037] group-hover:text-white transition-all">
                           <i className="bx bx-subdirectory-right text-lg"></i>
@@ -132,33 +143,38 @@ export default function Baslik() {
                 )}
 
                 {/* Ürünler Bölümü */}
-                {sonuclar.urunler?.length > 0 ? (
+                {sonuclar.urunler.length > 0 ? (
                   <div className="p-3">
                     <p className="text-[10px] font-bold text-gray-400 uppercase px-3 mb-2 tracking-wider">Ürünler</p>
                     {sonuclar.urunler.map(urun => (
                       <div
                         key={`urun-${urun.id}`}
                         onClick={() => {
-                          // App.jsx içindeki /urun/:kategori/:altKategori/:urunAdi/:id yapısına uygun yönlendirme
-                          const kategori = (urun.kategori || 'genel').toLowerCase().replace(/\s+/g, '-');
-                          const altKategori = (urun.altKategori || 'urun').toLowerCase().replace(/\s+/g, '-');
-                          const urunAdi = (urun.ad || 'urun').toLowerCase().replace(/\s+/g, '-');
-                          navigate(`/urun/${kategori}/${altKategori}/${urunAdi}/${urun.id}`);
+                          const kat = slugify(urun.kategori);
+                          const alt = slugify(urun.altKategori);
+                          const isim = slugify(urun.ad || urun.isim);
+                          navigate(`/urun/${kat}/${alt}/${isim}/${urun.id}`);
                           setDropdownAcik(false);
                         }}
-                        className="flex items-center gap-4 p-2 hover:bg-[#f8f5eb] rounded-xl cursor-pointer"
+                        className="flex items-center gap-4 p-2 hover:bg-[#f8f5eb] rounded-xl cursor-pointer group"
                       >
-                        <img src={urun.resim || "/images/bos.jpg"} className="w-10 h-10 object-contain bg-gray-50 rounded-lg p-1" alt={urun.ad} />
+                        <img
+                          src={urun.resim || "/images/bos.jpg"}
+                          className="w-10 h-10 object-contain bg-gray-50 rounded-lg p-1 group-hover:scale-110 transition-transform"
+                          alt={urun.ad}
+                        />
                         <div className="flex flex-col">
-                          <span className="text-sm font-medium line-clamp-1">{urun.ad}</span>
-                          <span className="text-xs text-[#8d6e63] font-bold">{urun.fiyat} TL</span>
+                          <span className="text-sm font-medium line-clamp-1">{urun.ad || urun.isim}</span>
+                          <span className="text-xs text-[#8d6e63] font-bold">{Number(urun.fiyat).toLocaleString('tr-TR')} TL</span>
                         </div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  !yukleniyor && sorgu.length >= 2 && sonuclar.kategoriler?.length === 0 && (
-                    <div className="p-8 text-center text-gray-400 italic text-sm">Aradığınız kriterlere uygun sonuç bulunamadı.</div>
+                  !yukleniyor && sorgu.trim().length >= 2 && (
+                    <div className="p-8 text-center text-gray-400 italic text-sm">
+                      Aradığınız kriterlere uygun sonuç bulunamadı.
+                    </div>
                   )
                 )}
               </div>
