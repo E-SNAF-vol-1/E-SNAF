@@ -3,11 +3,15 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import axios from "axios";
 
+// Merkezi API yapılandırması
+const api = axios.create({
+  baseURL: "https://esnaf.apps.srv.aykutdurgut.com.tr/api"
+});
+
 export default function Baslik() {
   const navigate = useNavigate();
   const { user, cikisYap } = useAuth();
 
-  // State Yönetimi
   const [sorgu, setSorgu] = useState("");
   const [menuAcik, setMenuAcik] = useState(false);
   const [sonuclar, setSonuclar] = useState({ urunler: [], kategoriler: [], altKategoriler: [] });
@@ -16,7 +20,7 @@ export default function Baslik() {
 
   const aramaRef = useRef(null);
 
-  // Canlı Arama Mantığı (Debounce Uygulanmış)
+  // Canlı Arama Debounce Mekanizması
   useEffect(() => {
     const aramaYap = async () => {
       if (sorgu.trim().length < 2) {
@@ -27,7 +31,8 @@ export default function Baslik() {
 
       setYukleniyor(true);
       try {
-        const res = await axios.get(`https://esnaf.apps.srv.aykutdurgut.com.tr/api/products/search/live?q=${encodeURIComponent(sorgu)}`);
+        // Rota düzeltildi: /products/search/live
+        const res = await api.get(`/products/search/live?q=${encodeURIComponent(sorgu)}`);
         setSonuclar(res.data);
         setDropdownAcik(true);
       } catch (err) {
@@ -41,7 +46,7 @@ export default function Baslik() {
     return () => clearTimeout(timeoutId);
   }, [sorgu]);
 
-  // Dışarı tıklayınca kapatma
+  // Dışarı tıklandığında listeyi kapat
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (aramaRef.current && !aramaRef.current.contains(event.target)) {
@@ -56,6 +61,7 @@ export default function Baslik() {
     e.preventDefault();
     if (sorgu.trim()) {
       setDropdownAcik(false);
+      // Enter'a basıldığında genel arama sayfasına q parametresiyle gider
       navigate(`/arama?q=${encodeURIComponent(sorgu)}`);
     }
   };
@@ -98,32 +104,34 @@ export default function Baslik() {
 
             {/* Canlı Sonuç Dropdown */}
             {dropdownAcik && (
-              <div className="absolute top-full left-0 w-full mt-2 bg-white rounded-2xl shadow-2xl border border-[#d2b48c]/20 overflow-hidden z-[60] max-h-[450px] overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="absolute top-full left-0 w-full mt-2 bg-white rounded-2xl shadow-2xl border border-[#d2b48c]/20 overflow-hidden z-[60] max-h-[450px] overflow-y-auto">
 
-                {/* Kategoriler ve Alt Kategoriler */}
+                {/* Kategoriler ve Alt Kategoriler Bölümü */}
                 {(sonuclar.kategoriler?.length > 0 || sonuclar.altKategoriler?.length > 0) && (
                   <div className="p-3 border-b border-gray-50">
-                    <p className="text-[10px] font-bold text-gray-400 uppercase px-3 mb-2 tracking-wider">Kategoriler</p>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase px-3 mb-2 tracking-wider">Hızlı Kategoriler</p>
+
                     {sonuclar.kategoriler?.map(kat => (
-                      <div key={`kat-${kat.id}`} onClick={() => { navigate(`/arama?kategori=${kat.ad}`); setDropdownAcik(false); }} className="flex items-center gap-3 p-2 hover:bg-[#f8f5eb] rounded-xl cursor-pointer transition-colors group">
+                      <div key={`kat-${kat.id}`} onClick={() => { navigate(`/arama?kategori=${kat.id}`); setDropdownAcik(false); }} className="flex items-center gap-3 p-2 hover:bg-[#f8f5eb] rounded-xl cursor-pointer group">
                         <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-[#d2b48c] group-hover:bg-[#5d4037] group-hover:text-white transition-all">
                           <i className="bx bx-category-alt text-lg"></i>
                         </div>
                         <span className="text-sm font-medium">{kat.ad}</span>
                       </div>
                     ))}
+
                     {sonuclar.altKategoriler?.map(alt => (
-                      <div key={`alt-${alt.id}`} onClick={() => { navigate(`/arama?altKategori=${alt.ad}`); setDropdownAcik(false); }} className="flex items-center gap-3 p-2 hover:bg-[#f8f5eb] rounded-xl cursor-pointer transition-colors group">
+                      <div key={`alt-${alt.id}`} onClick={() => { navigate(`/arama?altKategori=${alt.id}`); setDropdownAcik(false); }} className="flex items-center gap-3 p-2 hover:bg-[#f8f5eb] rounded-xl cursor-pointer group">
                         <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-[#d2b48c] group-hover:bg-[#5d4037] group-hover:text-white transition-all">
                           <i className="bx bx-subdirectory-right text-lg"></i>
                         </div>
-                        <span className="text-sm font-light">{alt.ad} <span className="text-[10px] text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity ml-1">Alt Kategori</span></span>
+                        <span className="text-sm font-light">{alt.ad}</span>
                       </div>
                     ))}
                   </div>
                 )}
 
-                {/* Ürünler */}
+                {/* Ürünler Bölümü */}
                 {sonuclar.urunler?.length > 0 ? (
                   <div className="p-3">
                     <p className="text-[10px] font-bold text-gray-400 uppercase px-3 mb-2 tracking-wider">Ürünler</p>
@@ -131,14 +139,18 @@ export default function Baslik() {
                       <div
                         key={`urun-${urun.id}`}
                         onClick={() => {
-                          navigate(`/urun/${(urun.kategori || 'genel').toLowerCase()}/${(urun.alt_kategori || 'urun').toLowerCase()}/${(urun.urun_adi || 'urun').toLowerCase().replace(/\s+/g, '-')}/${urun.id}`);
+                          // App.jsx içindeki /urun/:kategori/:altKategori/:urunAdi/:id yapısına uygun yönlendirme
+                          const kategori = (urun.kategori || 'genel').toLowerCase().replace(/\s+/g, '-');
+                          const altKategori = (urun.altKategori || 'urun').toLowerCase().replace(/\s+/g, '-');
+                          const urunAdi = (urun.ad || 'urun').toLowerCase().replace(/\s+/g, '-');
+                          navigate(`/urun/${kategori}/${altKategori}/${urunAdi}/${urun.id}`);
                           setDropdownAcik(false);
                         }}
-                        className="flex items-center gap-4 p-2 hover:bg-[#f8f5eb] rounded-xl cursor-pointer transition-colors"
+                        className="flex items-center gap-4 p-2 hover:bg-[#f8f5eb] rounded-xl cursor-pointer"
                       >
-                        <img src={urun.resim || "/images/bos.jpg"} className="w-10 h-10 object-contain bg-gray-50 rounded-lg p-1" alt="" />
+                        <img src={urun.resim || "/images/bos.jpg"} className="w-10 h-10 object-contain bg-gray-50 rounded-lg p-1" alt={urun.ad} />
                         <div className="flex flex-col">
-                          <span className="text-sm font-medium line-clamp-1">{urun.urun_adi}</span>
+                          <span className="text-sm font-medium line-clamp-1">{urun.ad}</span>
                           <span className="text-xs text-[#8d6e63] font-bold">{urun.fiyat} TL</span>
                         </div>
                       </div>
@@ -146,7 +158,7 @@ export default function Baslik() {
                   </div>
                 ) : (
                   !yukleniyor && sorgu.length >= 2 && sonuclar.kategoriler?.length === 0 && (
-                    <div className="p-8 text-center text-gray-400 italic text-sm">Aradığınızı bulamadık...</div>
+                    <div className="p-8 text-center text-gray-400 italic text-sm">Aradığınız kriterlere uygun sonuç bulunamadı.</div>
                   )
                 )}
               </div>
