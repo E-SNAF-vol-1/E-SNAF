@@ -9,7 +9,8 @@ import CerezPolitikasi from "./sayfalar/CerezPolitikasi";
 import Odeme from "./sayfalar/Odeme";
 import GirisYap from "./components/GirisYap";
 import KayitOl from "./components/KayitOl";
-import Hesabim from "./sayfalar/Hesabim";        // ← YENİ
+import Hesabim from "./sayfalar/Hesabim"; 
+import Iletisim from "./sayfalar/Iletisim";       // ← YENİ
 import { AuthProvider } from "./context/AuthContext"; // ← YENİ
 import axios from "axios";
 
@@ -30,6 +31,7 @@ function App() {
           <Route path="/giris-yap" element={<GirisYap />} />
           <Route path="/kayit-ol" element={<KayitOl />} />
           <Route path="/hesabim" element={<Hesabim />} />  {/* ← YENİ */}
+          <Route path="/iletisim" element={<Iletisim />} />
           <Route path="/sifremi-unuttum" element={
             <div style={{ padding: "100px", textAlign: "center", backgroundColor: "#f8f5eb", minHeight: "100vh" }}>
               Şifre Sıfırlama Sayfası Hazırlanıyor...
