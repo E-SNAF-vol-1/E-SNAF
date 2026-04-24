@@ -48,7 +48,6 @@ export class SiparisService {
         misafir_bilgileri: orderData.misafir_bilgileri || null,
         toplam_tutar: orderData.toplam_tutar,
         odeme_yontemi: orderData.odeme_yontemi,
-        notlar: orderData.notlar,
         durum: 'Beklemede',
       });
 

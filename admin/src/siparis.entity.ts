@@ -21,9 +21,6 @@ export class Siparis {
   @Column({ length: 50, default: 'Hazırlanıyor' })
   durum: string;
 
-  @Column({ type: 'text', nullable: true })
-  notlar: string;
-
   // Yeni eklediğimiz alanlar
   @Column({ type: 'jsonb', nullable: true })
   misafir_bilgileri: any;
