@@ -1,16 +1,61 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import axios from "axios";
 
 export default function Baslik() {
   const navigate = useNavigate();
-  const [sorgu, setSorgu] = useState("");
   const { user, cikisYap } = useAuth();
+
+  // State Yönetimi
+  const [sorgu, setSorgu] = useState("");
   const [menuAcik, setMenuAcik] = useState(false);
+  const [sonuclar, setSonuclar] = useState({ urunler: [], kategoriler: [], altKategoriler: [] });
+  const [dropdownAcik, setDropdownAcik] = useState(false);
+  const [yukleniyor, setYukleniyor] = useState(false);
+
+  const aramaRef = useRef(null);
+
+  // Canlı Arama Mantığı (Debounce Uygulanmış)
+  useEffect(() => {
+    const aramaYap = async () => {
+      if (sorgu.trim().length < 2) {
+        setSonuclar({ urunler: [], kategoriler: [], altKategoriler: [] });
+        setDropdownAcik(false);
+        return;
+      }
+
+      setYukleniyor(true);
+      try {
+        const res = await axios.get(`https://esnaf.apps.srv.aykutdurgut.com.tr/api/products/search/live?q=${encodeURIComponent(sorgu)}`);
+        setSonuclar(res.data);
+        setDropdownAcik(true);
+      } catch (err) {
+        console.error("Canlı arama hatası:", err);
+      } finally {
+        setYukleniyor(false);
+      }
+    };
+
+    const timeoutId = setTimeout(aramaYap, 300);
+    return () => clearTimeout(timeoutId);
+  }, [sorgu]);
+
+  // Dışarı tıklayınca kapatma
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (aramaRef.current && !aramaRef.current.contains(event.target)) {
+        setDropdownAcik(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const handleSearch = (e) => {
     e.preventDefault();
     if (sorgu.trim()) {
+      setDropdownAcik(false);
       navigate(`/arama?q=${encodeURIComponent(sorgu)}`);
     }
   };
@@ -21,8 +66,7 @@ export default function Baslik() {
     navigate("/");
   };
 
-  const buttonStyle =
-    "flex items-center justify-center gap-2 px-4 py-2 rounded-full transition-all duration-300 cursor-pointer hover:bg-[#5d4037] hover:text-[#f5f5dc] font-medium text-sm";
+  const buttonStyle = "flex items-center justify-center gap-2 px-4 py-2 rounded-full transition-all duration-300 cursor-pointer hover:bg-[#5d4037] hover:text-[#f5f5dc] font-medium text-sm";
 
   return (
     <header className="sticky top-0 z-50 bg-[#f8f5eb] border-b border-[#d2b48c]/30 shadow-sm text-[#5d4037]">
@@ -30,118 +74,124 @@ export default function Baslik() {
         <div className="flex items-center justify-between h-20 gap-8">
 
           {/* Logo */}
-          <div
-            className="flex-shrink-0 cursor-pointer group"
-            onClick={() => navigate("/")}
-          >
+          <div className="flex-shrink-0 cursor-pointer group" onClick={() => navigate("/")}>
             <h1 className="text-xl md:text-2xl font-black tracking-[0.3em] uppercase transition-all duration-500 group-hover:tracking-[0.35em]">
               E<span className="text-[#d2b48c]">-</span>SNAF
             </h1>
           </div>
 
-          {/* Arama */}
-          <form
-            onSubmit={handleSearch}
-            className="hidden md:flex flex-grow max-w-md relative"
-          >
-            <input
-              type="text"
-              placeholder="Ürün, kategori veya marka ara..."
-              value={sorgu}
-              onChange={(e) => setSorgu(e.target.value)}
-              className="w-full bg-white border border-[#d2b48c]/20 rounded-full py-2.5 px-6 focus:outline-none focus:ring-2 focus:ring-[#5d4037]/10 text-sm font-light placeholder:text-[#5d4037]/40 shadow-sm text-[#5d4037]"
-            />
-            <button
-              type="submit"
-              className="absolute right-4 top-1/2 -translate-y-1/2 opacity-40 hover:opacity-100 transition-opacity cursor-pointer"
-            >
-              <i className="bx bx-search text-xl"></i>
-            </button>
-          </form>
+          {/* Akıllı Canlı Arama Bölümü */}
+          <div className="hidden md:block flex-grow max-w-md relative" ref={aramaRef}>
+            <form onSubmit={handleSearch} className="relative">
+              <input
+                type="text"
+                placeholder="Ürün, kategori veya marka ara..."
+                value={sorgu}
+                onChange={(e) => setSorgu(e.target.value)}
+                onFocus={() => sorgu.length >= 2 && setDropdownAcik(true)}
+                className="w-full bg-white border border-[#d2b48c]/20 rounded-full py-2.5 px-6 focus:outline-none focus:ring-2 focus:ring-[#5d4037]/10 text-sm font-light shadow-sm"
+              />
+              <button type="submit" className="absolute right-4 top-1/2 -translate-y-1/2 opacity-40 hover:opacity-100 transition-opacity">
+                {yukleniyor ? <i className="bx bx-loader-alt animate-spin text-xl"></i> : <i className="bx bx-search text-xl"></i>}
+              </button>
+            </form>
+
+            {/* Canlı Sonuç Dropdown */}
+            {dropdownAcik && (
+              <div className="absolute top-full left-0 w-full mt-2 bg-white rounded-2xl shadow-2xl border border-[#d2b48c]/20 overflow-hidden z-[60] max-h-[450px] overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200">
+
+                {/* Kategoriler ve Alt Kategoriler */}
+                {(sonuclar.kategoriler?.length > 0 || sonuclar.altKategoriler?.length > 0) && (
+                  <div className="p-3 border-b border-gray-50">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase px-3 mb-2 tracking-wider">Kategoriler</p>
+                    {sonuclar.kategoriler?.map(kat => (
+                      <div key={`kat-${kat.id}`} onClick={() => { navigate(`/arama?kategori=${kat.ad}`); setDropdownAcik(false); }} className="flex items-center gap-3 p-2 hover:bg-[#f8f5eb] rounded-xl cursor-pointer transition-colors group">
+                        <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-[#d2b48c] group-hover:bg-[#5d4037] group-hover:text-white transition-all">
+                          <i className="bx bx-category-alt text-lg"></i>
+                        </div>
+                        <span className="text-sm font-medium">{kat.ad}</span>
+                      </div>
+                    ))}
+                    {sonuclar.altKategoriler?.map(alt => (
+                      <div key={`alt-${alt.id}`} onClick={() => { navigate(`/arama?altKategori=${alt.ad}`); setDropdownAcik(false); }} className="flex items-center gap-3 p-2 hover:bg-[#f8f5eb] rounded-xl cursor-pointer transition-colors group">
+                        <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center text-[#d2b48c] group-hover:bg-[#5d4037] group-hover:text-white transition-all">
+                          <i className="bx bx-subdirectory-right text-lg"></i>
+                        </div>
+                        <span className="text-sm font-light">{alt.ad} <span className="text-[10px] text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity ml-1">Alt Kategori</span></span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Ürünler */}
+                {sonuclar.urunler?.length > 0 ? (
+                  <div className="p-3">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase px-3 mb-2 tracking-wider">Ürünler</p>
+                    {sonuclar.urunler.map(urun => (
+                      <div
+                        key={`urun-${urun.id}`}
+                        onClick={() => {
+                          navigate(`/urun/${(urun.kategori || 'genel').toLowerCase()}/${(urun.alt_kategori || 'urun').toLowerCase()}/${(urun.urun_adi || 'urun').toLowerCase().replace(/\s+/g, '-')}/${urun.id}`);
+                          setDropdownAcik(false);
+                        }}
+                        className="flex items-center gap-4 p-2 hover:bg-[#f8f5eb] rounded-xl cursor-pointer transition-colors"
+                      >
+                        <img src={urun.resim || "/images/bos.jpg"} className="w-10 h-10 object-contain bg-gray-50 rounded-lg p-1" alt="" />
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium line-clamp-1">{urun.urun_adi}</span>
+                          <span className="text-xs text-[#8d6e63] font-bold">{urun.fiyat} TL</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  !yukleniyor && sorgu.length >= 2 && sonuclar.kategoriler?.length === 0 && (
+                    <div className="p-8 text-center text-gray-400 italic text-sm">Aradığınızı bulamadık...</div>
+                  )
+                )}
+              </div>
+            )}
+          </div>
 
           {/* Sağ butonlar */}
           <div className="flex items-center gap-2">
-
-            {/* ── Giriş yapıldıysa: İsim + Dropdown ── */}
             {user ? (
-              <div style={{ position: 'relative' }}>
+              <div className="relative">
                 <button
                   className={buttonStyle}
                   onClick={() => setMenuAcik(!menuAcik)}
                   style={{ background: menuAcik ? '#5d4037' : undefined, color: menuAcik ? '#f5f5dc' : undefined }}
                 >
                   <i className="bx bx-user text-xl"></i>
-                  <span className="hidden lg:inline">
-                    {user.ad} {user.soyad?.charAt(0)}.
-                  </span>
-                  <span style={{ fontSize: '10px' }}>{menuAcik ? '▲' : '▼'}</span>
+                  <span className="hidden lg:inline">{user.ad} {user.soyad?.charAt(0)}.</span>
+                  <span className="text-[10px]">{menuAcik ? '▲' : '▼'}</span>
                 </button>
 
-                {/* Dropdown menü */}
                 {menuAcik && (
-                  <div style={{
-                    position: 'absolute', right: 0, top: 'calc(100% + 8px)',
-                    backgroundColor: '#fff', borderRadius: '16px',
-                    boxShadow: '0 10px 40px rgba(93,64,55,0.15)',
-                    minWidth: '200px', zIndex: 100, overflow: 'hidden',
-                    border: '1px solid #f0ebe0'
-                  }}>
-                    {/* Kullanıcı bilgisi */}
-                    <div style={{ padding: '16px 18px', backgroundColor: '#f8f5eb', borderBottom: '1px solid #f0ebe0' }}>
-                      <p style={{ margin: 0, fontWeight: '800', color: '#5d4037', fontSize: '14px' }}>
-                        {user.ad} {user.soyad}
-                      </p>
-                      <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#a68b6d', wordBreak: 'break-all' }}>
-                        {user.email}
-                      </p>
+                  <div className="absolute right-0 top-[calc(100%+8px)] bg-white rounded-2xl shadow-2xl min-w-[220px] z-[100] overflow-hidden border border-[#f0ebe0]">
+                    <div className="p-4 bg-[#f8f5eb] border-b border-[#f0ebe0]">
+                      <p className="font-bold text-[#5d4037] text-sm">{user.ad} {user.soyad}</p>
+                      <p className="text-xs text-[#a68b6d] truncate">{user.email}</p>
                     </div>
-
-                    {/* Menü öğeleri */}
-                    <button
-                      onClick={() => { setMenuAcik(false); navigate("/hesabim"); }}
-                      style={ddBtn}
-                    >
-                      📦 Hesabım & Siparişlerim
-                    </button>
-                    <button
-                      onClick={handleCikis}
-                      style={{ ...ddBtn, color: '#c62828', borderTop: '1px solid #fef2f2' }}
-                    >
-                      🚪 Çıkış Yap
-                    </button>
+                    <button onClick={() => { setMenuAcik(false); navigate("/hesabim"); }} className="w-full p-4 text-left text-sm font-semibold text-[#5d4037] hover:bg-[#f8f5eb] transition-colors">📦 Hesabım & Siparişlerim</button>
+                    <button onClick={handleCikis} className="w-full p-4 text-left text-sm font-semibold text-[#c62828] hover:bg-red-50 border-t border-red-50 transition-colors">🚪 Çıkış Yap</button>
                   </div>
                 )}
               </div>
             ) : (
-              /* ── Giriş yapılmadıysa: normal buton ── */
-              <div
-                className={buttonStyle}
-                onClick={() => navigate("/giris-yap")}
-              >
+              <div className={buttonStyle} onClick={() => navigate("/giris-yap")}>
                 <i className="bx bx-user text-xl"></i>
                 <span className="hidden lg:inline">Hesabım</span>
               </div>
             )}
 
-            {/* Sepet butonu */}
-            <div
-              className={buttonStyle}
-              onClick={() => navigate("/sepet")}
-            >
+            <div className={buttonStyle} onClick={() => navigate("/sepet")}>
               <i className="bx bx-cart text-xl"></i>
               <span className="hidden lg:inline">Sepetim</span>
             </div>
           </div>
-
         </div>
       </div>
     </header>
   );
 }
-
-const ddBtn = {
-  display: 'block', width: '100%', padding: '13px 18px',
-  background: 'none', border: 'none', textAlign: 'left',
-  fontSize: '14px', fontWeight: '600', color: '#5d4037',
-  cursor: 'pointer', transition: 'background 0.15s'
-};
