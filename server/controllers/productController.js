@@ -1,8 +1,6 @@
 const pool = require("../db");
 
 // Yardımcı Fonksiyon: DB satırlarını frontend formatına dönüştürür
-// server/controllers/productController.js
-
 function mapProduct(row) {
   if (!row) return null;
   return {
@@ -12,13 +10,14 @@ function mapProduct(row) {
     aciklama: row.aciklama || "",
     fiyat: row.fiyat ? Number(row.fiyat) : 0,
     stok: row.stok_adedi || 0,
-    kategori: row.kategori_adi || "Genel", // Hata veren kısım burasıydı, artık boş kalamaz
+    kategori: row.kategori_adi || "Genel",
     altKategori: row.alt_kategori_adi || "Genel",
     resim: row.gorsel_yolu || "/images/bos.jpg",
     renk: "Standart"
   };
 }
-// 1. Canlı Arama (Eski koda ve sütun isimlerine tam uyumlu hale getirildi)
+
+// 1. Canlı Arama (Dropdown Menü İçin)
 exports.liveSearch = async (req, res) => {
   const { q } = req.query;
   const queryTerm = `%${q}%`;
@@ -66,7 +65,7 @@ exports.liveSearch = async (req, res) => {
   }
 };
 
-// 2. Genel Arama (Eski çalışan yapıya sadık kalındı)
+// 2. Genel Arama (Arama Sonuçları Sayfası İçin)
 exports.searchProducts = async (req, res) => {
   const { q } = req.query;
   const queryTerm = `%${q}%`;
@@ -92,11 +91,10 @@ exports.searchProducts = async (req, res) => {
   }
 };
 
-// 3. Mevcut Tüm Ürünleri Getir (Eski çalışan yapı)
+// 3. Tüm Ürünleri Getir (Kategori Filtreleme Destekli)
 exports.getAll = async (req, res) => {
   try {
     const { q, kategori_id, alt_kategori_id } = req.query;
-
     let query = `
       SELECT u.id, u.urun_adi, u.aciklama, u.fiyat, u.stok_adedi, k.kategori_adi, ak.alt_kategori_adi,
       (SELECT ug.gorsel_yolu FROM public.urun_gorsel ug WHERE ug.urun_id = u.id ORDER BY ug.ana_gorsel_mi DESC LIMIT 1) AS gorsel_yolu
@@ -105,7 +103,6 @@ exports.getAll = async (req, res) => {
       LEFT JOIN public.kategori k ON k.id = ak.ana_kategori_id
       WHERE 1=1
     `;
-
     const params = [];
     let i = 1;
 
@@ -114,16 +111,14 @@ exports.getAll = async (req, res) => {
       params.push(`%${q}%`);
       i++;
     }
-
     if (kategori_id) {
       query += ` AND k.id = $${i}`;
       params.push(kategori_id);
       i++;
     }
-
-    if (alt_kategori_id) {
+    if (alt_k_id) { // Eski koddaki alt_kategori_id ismiyle uyumlu
       query += ` AND ak.id = $${i}`;
-      params.push(alt_kategori_id);
+      params.push(alt_k_id);
       i++;
     }
 
@@ -136,7 +131,7 @@ exports.getAll = async (req, res) => {
   }
 };
 
-// 4. Tekil Ürün Detayı (Eski çalışan yapı)
+// 4. Tekil Ürün Detayı
 exports.getOne = async (req, res) => {
   try {
     const result = await pool.query(`
@@ -151,12 +146,12 @@ exports.getOne = async (req, res) => {
     if (result.rows.length === 0) return res.status(404).json({ mesaj: "Ürün bulunamadı" });
     res.json(mapProduct(result.rows[0]));
   } catch (err) {
-    console.error(err);
+    console.error("Detay hatası:", err);
     res.status(500).json({ mesaj: "Ürün alınamadı" });
   }
 };
 
-// 5. Ürün Ekleme (Eski çalışan yapı)
+// 5. Ürün Ekleme
 exports.create = async (req, res) => {
   try {
     const { alt_kategori_id, urun_adi, aciklama, fiyat, stok_adedi, gorsel_yolu } = req.body;
@@ -171,12 +166,12 @@ exports.create = async (req, res) => {
     }
     res.status(201).json({ mesaj: "Ürün eklendi", urun });
   } catch (err) {
-    console.error(err);
+    console.error("Ekleme hatası:", err);
     res.status(500).json({ mesaj: "Ürün eklenemedi" });
   }
 };
 
-// 6. Ürün Güncelleme (Eski çalışan yapı)
+// 6. Ürün Güncelleme
 exports.update = async (req, res) => {
   try {
     const { alt_kategori_id, urun_adi, aciklama, fiyat, stok_adedi, gorsel_yolu } = req.body;
@@ -195,18 +190,18 @@ exports.update = async (req, res) => {
     }
     res.json({ mesaj: "Ürün güncellendi" });
   } catch (err) {
-    console.error(err);
+    console.error("Güncelleme hatası:", err);
     res.status(500).json({ mesaj: "Ürün güncellenemedi" });
   }
 };
 
-// 7. Ürün Silme (Eski çalışan yapı)
+// 7. Ürün Silme
 exports.remove = async (req, res) => {
   try {
     await pool.query("DELETE FROM public.urun WHERE id = $1", [req.params.id]);
     res.json({ mesaj: "Ürün silindi" });
   } catch (err) {
-    console.error(err);
+    console.error("Silme hatası:", err);
     res.status(500).json({ mesaj: "Ürün silinemedi" });
   }
 };
