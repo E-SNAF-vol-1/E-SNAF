@@ -1,5 +1,10 @@
 const pool = require("../db");
 
+/**
+ * SİPARİŞ KONTROLLERİ
+ * Bu dosya hem kullanıcıların hem de yöneticilerin sipariş işlemlerini yönetir.
+ */
+
 // --- SİPARİŞ OLUŞTURMA (FRONTEND İÇİN) ---
 exports.createOrder = async (req, res) => {
   const client = await pool.connect();
@@ -16,7 +21,7 @@ exports.createOrder = async (req, res) => {
       isGuest,
       odeme_yontemi,
       adres_id,
-      notlar // Arkadaşınızın veritabanına eklediği yeni sütun
+      notlar // Veritabanına eklenen yeni sütun
     } = req.body;
 
     let nihaiAdresId = adres_id;
@@ -46,7 +51,7 @@ exports.createOrder = async (req, res) => {
       telefon: customerInfo?.telefon
     } : null;
 
-    // 4. Sipariş Kaydı (notlar sütunu $6 olarak eklendi)
+    // 4. Sipariş Kaydı
     const siparisResult = await client.query(`
             INSERT INTO public.siparis (musteri_id, adres_id, toplam_tutar, durum, misafir_bilgileri, odeme_yontemi, notlar)
             VALUES ($1, $2, $3, 'Hazırlanıyor', $4, $5, $6)
@@ -85,6 +90,8 @@ exports.createOrder = async (req, res) => {
 };
 
 // --- KULLANICI FONKSİYONLARI ---
+
+// Kullanıcının kendi siparişlerini listeler
 exports.getMyOrders = async (req, res) => {
   try {
     if (!req.session?.user) return res.status(401).json({ mesaj: "Giriş yapmalısınız" });
@@ -100,6 +107,7 @@ exports.getMyOrders = async (req, res) => {
   }
 };
 
+// Kullanıcının belirli bir siparişinin detaylarını getirir
 exports.getMyOrderDetail = async (req, res) => {
   try {
     if (!req.session?.user) return res.status(401).json({ mesaj: "Giriş yapmalısınız" });
@@ -127,6 +135,8 @@ exports.getMyOrderDetail = async (req, res) => {
 };
 
 // --- ADMIN FONKSİYONLARI ---
+
+// Tüm sistemdeki siparişleri listeler (Admin paneli için)
 exports.getAllOrdersAdmin = async (req, res) => {
   try {
     const result = await pool.query(`
@@ -142,6 +152,7 @@ exports.getAllOrdersAdmin = async (req, res) => {
   }
 };
 
+// Herhangi bir siparişin tam detaylarını getirir (Admin paneli için)
 exports.getOrderDetailAdmin = async (req, res) => {
   try {
     const siparisResult = await pool.query(`
@@ -168,6 +179,7 @@ exports.getOrderDetailAdmin = async (req, res) => {
   }
 };
 
+// Sipariş durumunu günceller (Hazırlanıyor -> Kargoya Verildi vb.)
 exports.updateStatus = async (req, res) => {
   try {
     const { durum } = req.body;
