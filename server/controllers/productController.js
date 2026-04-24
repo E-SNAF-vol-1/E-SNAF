@@ -2,16 +2,23 @@ const pool = require("../db");
 
 // Yardımcı Fonksiyon: DB satırlarını frontend formatına dönüştürür
 function mapProduct(row) {
+  if (!row) return null;
+
+  // Resim yolu kontrolü: Eğer yol başında '/' yoksa ekler, boşsa varsayılan resme döner
+  const gorsel = row.gorsel_yolu
+    ? (row.gorsel_yolu.startsWith('/') ? row.gorsel_yolu : '/' + row.gorsel_yolu)
+    : "/images/bos.jpg";
+
   return {
     id: row.id,
     isim: row.urun_adi,
     ad: row.urun_adi,
-    aciklama: row.aciklama,
-    fiyat: Number(row.fiyat),
-    stok: row.stok_adedi,
-    kategori: row.kategori_adi,
-    altKategori: row.alt_kategori_adi,
-    resim: row.gorsel_yolu || "/images/bos.jpg",
+    aciklama: row.aciklama || "",
+    fiyat: row.fiyat ? Number(row.fiyat) : 0,
+    stok: row.stok_adedi || 0,
+    kategori: row.kategori_adi || "Genel",
+    altKategori: row.alt_kategori_adi || "Genel", // Tüm sorgularda bu ismi sabitledik
+    resim: gorsel,
     renk: "Standart"
   };
 }
@@ -55,7 +62,7 @@ exports.liveSearch = async (req, res) => {
       altKategoriler: altKategoriler.rows
     });
   } catch (err) {
-    console.error(err);
+    console.error("Canlı arama hatası:", err);
     res.status(500).json({ mesaj: "Canlı arama hatası" });
   }
 };
@@ -67,7 +74,8 @@ exports.searchProducts = async (req, res) => {
 
   try {
     const query = `
-      SELECT u.*, k.kategori_adi, ak.alt_k_adi as alt_k_adi,
+      SELECT u.id, u.urun_adi, u.aciklama, u.fiyat, u.stok_adedi, u.eklenme_tarihi, 
+      k.kategori_adi, ak.alt_k_adi as alt_kategori_adi,
       (SELECT ug.gorsel_yolu FROM public.urun_gorsel ug WHERE ug.urun_id = u.id ORDER BY ug.ana_gorsel_mi DESC LIMIT 1) as gorsel_yolu
       FROM public.urun u
       LEFT JOIN public.alt_kategori ak ON ak.id = u.alt_kategori_id
@@ -81,7 +89,7 @@ exports.searchProducts = async (req, res) => {
     const result = await pool.query(query, [queryTerm]);
     res.json(result.rows.map(mapProduct));
   } catch (err) {
-    console.error(err);
+    console.error("Genel arama hatası:", err);
     res.status(500).json({ mesaj: "Arama hatası" });
   }
 };
@@ -92,7 +100,7 @@ exports.getAll = async (req, res) => {
     const { q, kategori_id, alt_kategori_id } = req.query;
 
     let query = `
-      SELECT u.id, u.urun_adi, u.aciklama, u.fiyat, u.stok_adedi, k.kategori_adi, ak.alt_k_adi as alt_k_adi,
+      SELECT u.id, u.urun_adi, u.aciklama, u.fiyat, u.stok_adedi, k.kategori_adi, ak.alt_k_adi as alt_kategori_adi,
       (SELECT ug.gorsel_yolu FROM public.urun_gorsel ug WHERE ug.urun_id = u.id ORDER BY ug.ana_gorsel_mi DESC LIMIT 1) AS gorsel_yolu
       FROM public.urun u
       LEFT JOIN public.alt_kategori ak ON ak.id = u.alt_kategori_id
@@ -125,7 +133,7 @@ exports.getAll = async (req, res) => {
     const result = await pool.query(query, params);
     res.json(result.rows.map(mapProduct));
   } catch (err) {
-    console.error(err);
+    console.error("Ürün listeleme hatası:", err);
     res.status(500).json({ mesaj: "Ürünler alınamadı" });
   }
 };
@@ -134,7 +142,7 @@ exports.getAll = async (req, res) => {
 exports.getOne = async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT u.id, u.urun_adi, u.aciklama, u.fiyat, u.stok_adedi, k.kategori_adi, ak.alt_k_adi as alt_k_adi,
+      SELECT u.id, u.urun_adi, u.aciklama, u.fiyat, u.stok_adedi, k.kategori_adi, ak.alt_k_adi as alt_kategori_adi,
       (SELECT ug.gorsel_yolu FROM public.urun_gorsel ug WHERE ug.urun_id = u.id LIMIT 1) AS gorsel_yolu
       FROM public.urun u
       LEFT JOIN public.alt_kategori ak ON ak.id = u.alt_kategori_id
@@ -145,12 +153,12 @@ exports.getOne = async (req, res) => {
     if (result.rows.length === 0) return res.status(404).json({ mesaj: "Ürün bulunamadı" });
     res.json(mapProduct(result.rows[0]));
   } catch (err) {
-    console.error(err);
+    console.error("Tekil ürün hatası:", err);
     res.status(500).json({ mesaj: "Ürün alınamadı" });
   }
 };
 
-// 5. Ürün Ekleme
+// 5. Ürün Ekleme (Değişmedi)
 exports.create = async (req, res) => {
   try {
     const { alt_kategori_id, urun_adi, aciklama, fiyat, stok_adedi, gorsel_yolu } = req.body;
@@ -165,12 +173,12 @@ exports.create = async (req, res) => {
     }
     res.status(201).json({ mesaj: "Ürün eklendi", urun });
   } catch (err) {
-    console.error(err);
+    console.error("Ürün ekleme hatası:", err);
     res.status(500).json({ mesaj: "Ürün eklenemedi" });
   }
 };
 
-// 6. Ürün Güncelleme
+// 6. Ürün Güncelleme (Değişmedi)
 exports.update = async (req, res) => {
   try {
     const { alt_kategori_id, urun_adi, aciklama, fiyat, stok_adedi, gorsel_yolu } = req.body;
@@ -189,18 +197,18 @@ exports.update = async (req, res) => {
     }
     res.json({ mesaj: "Ürün güncellendi" });
   } catch (err) {
-    console.error(err);
+    console.error("Ürün güncelleme hatası:", err);
     res.status(500).json({ mesaj: "Ürün güncellenemedi" });
   }
 };
 
-// 7. Ürün Silme
+// 7. Ürün Silme (Değişmedi)
 exports.remove = async (req, res) => {
   try {
     await pool.query("DELETE FROM public.urun WHERE id = $1", [req.params.id]);
     res.json({ mesaj: "Ürün silindi" });
   } catch (err) {
-    console.error(err);
+    console.error("Ürün silme hatası:", err);
     res.status(500).json({ mesaj: "Ürün silinemedi" });
   }
 };
