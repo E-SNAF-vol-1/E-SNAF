@@ -4,7 +4,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import SiparisBasarili from "../components/SiparisBasarili.jsx";
-import SepetOzetiOdeme from "../components/SepetOzetiOdeme.jsx"; // Yeni bileşeni ekledik
+import SepetOzetiOdeme from "../components/SepetOzetiOdeme.jsx";
 
 const api = axios.create({
     baseURL: "https://esnaf.apps.srv.aykutdurgut.com.tr/api",
@@ -21,7 +21,6 @@ export default function Odeme() {
     const now = new Date();
     const currentYear = now.getFullYear();
 
-    // --- STATE YÖNETİMİ ---
     const [customerData, setCustomerData] = useState({ ad: "", soyad: "", email: "", telefon: "" });
     const [addressData, setAddressData] = useState({ baslik: "", sehir: "", ilce: "", detay: "", postaKodu: "" });
     const [paymentMethod, setPaymentMethod] = useState("kredi_karti");
@@ -33,7 +32,6 @@ export default function Odeme() {
     const [orderId, setOrderId] = useState("");
     const [guestOrderPdfData, setGuestOrderPdfData] = useState(null);
 
-    // --- AKILLI OTOMATİK DOLDURMA SİSTEMİ ---
     useEffect(() => {
         if (user) {
             setCustomerData({
@@ -59,10 +57,9 @@ export default function Odeme() {
                         });
                     }
                 } catch (err) {
-                    console.log("Kayıtlı adresler otomatik getirilemedi.");
+                    console.log("Kayıtlı adresler getirilemedi.");
                 }
             };
-
             if (token) adresleriGetir();
         }
     }, [user, token]);
@@ -77,7 +74,6 @@ export default function Odeme() {
         setIsProcessing(false);
     };
 
-    // --- INPUT FİLTRELERİ ---
     const handleSadeceHarfGiris = (deger, stateObj, setState, alan) => {
         const temizVeri = deger.replace(/[^a-zA-ZçğıöşüÇĞİÖŞÜ\s]/g, "");
         setState({ ...stateObj, [alan]: temizVeri });
@@ -103,41 +99,40 @@ export default function Odeme() {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
         const postaKoduRegex = /^[0-9]{5}$/;
 
-        if (!isimRegex.test(customerData.ad)) return hataGoster("Ad sadece harflerden oluşmalıdır.");
-        if (!isimRegex.test(customerData.soyad)) return hataGoster("Soyad sadece harflerden oluşmalıdır.");
-        if (!emailRegex.test(customerData.email)) return hataGoster("Geçerli bir e-posta giriniz.");
-        if (customerData.telefon.length !== 11) return hataGoster("Telefon 11 haneli olmalıdır.");
-        if (!addressData.baslik.trim()) return hataGoster("Lütfen bir adres başlığı giriniz.");
-        if (!isimRegex.test(addressData.sehir)) return hataGoster("Şehir adı sadece harflerden oluşmalıdır.");
-        if (!isimRegex.test(addressData.ilce)) return hataGoster("İlçe adı sadece harflerden oluşmalıdır.");
-        if (!addressData.detay.trim()) return hataGoster("Açık adres detayını doldurunuz.");
-        if (!postaKoduRegex.test(addressData.postaKodu)) return hataGoster("Posta kodu 5 haneli bir sayı olmalıdır.");
+        if (!isimRegex.test(customerData.ad)) return hataGoster("Ad hatalı.");
+        if (!isimRegex.test(customerData.soyad)) return hataGoster("Soyad hatalı.");
+        if (!emailRegex.test(customerData.email)) return hataGoster("E-posta hatalı.");
+        if (customerData.telefon.length !== 11) return hataGoster("Telefon hatalı.");
+        if (!addressData.baslik.trim()) return hataGoster("Adres başlığı eksik.");
+        if (!isimRegex.test(addressData.sehir)) return hataGoster("Şehir hatalı.");
+        if (!isimRegex.test(addressData.ilce)) return hataGoster("İlçe hatalı.");
+        if (!addressData.detay.trim()) return hataGoster("Adres detayı eksik.");
+        if (!postaKoduRegex.test(addressData.postaKodu)) return hataGoster("Posta kodu hatalı.");
 
         if (paymentMethod === "kredi_karti") {
-            if (!isimRegex.test(cardDetails.holder)) return hataGoster("Kart üzerindeki isim sadece harf içerebilir.");
-            if (cardDetails.number.length !== 16) return hataGoster("Kart numarası 16 haneli olmalıdır.");
+            if (!isimRegex.test(cardDetails.holder)) return hataGoster("Kart ismi hatalı.");
+            if (cardDetails.number.length !== 16) return hataGoster("Kart numarası hatalı.");
             if (!cardDetails.month || !cardDetails.year || cardDetails.cvv.length !== 3) {
-                return hataGoster("Kart bilgilerini eksiksiz tamamlayın.");
+                return hataGoster("Kart bilgileri eksik.");
             }
         }
 
+        // Backend ile tam uyumlu temiz ürün listesi
         const sepetUrunleri = (state.SepetNesneleri || []).map((item) => ({
-            id: item.id || item.urun_id,
             urun_id: item.id || item.urun_id,
-            urun_adi: item.urun_adi || item.ad || item.isim || "Ürün",
             fiyat: Number(item.fiyat || 0),
             miktar: Number(item.miktar || item.adet || 1),
-            gorsel: item.gorsel || item.resim || item.image || ""
+            urun_adi: item.ad || item.isim || "Ürün"
         }));
 
-        const toplamTutar = sepetUrunleri.reduce((acc, item) => acc + (item.fiyat * item.miktar), 0) || 0;
+        const toplamTutar = sepetUrunleri.reduce((acc, item) => acc + (item.fiyat * item.miktar), 0);
 
         const siparisPaketi = {
             isGuest: !user && !token,
             customerInfo: customerData,
             addressInfo: addressData,
             odeme_yontemi: paymentMethod === "kredi_karti" ? "KREDİ" : "HAVALE",
-            items: state.SepetNesneleri,
+            items: sepetUrunleri,
             totalPrice: toplamTutar
         };
 
@@ -198,8 +193,6 @@ export default function Odeme() {
 
             <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-10">
                 <form onSubmit={handleProcessOrder} className="lg:col-span-2 space-y-8 bg-white p-8 rounded-2xl shadow-sm border border-[#ede6ca]">
-
-                    {/* 1. Müşteri Bilgileri */}
                     <section className="space-y-6">
                         <h2 className="text-2xl font-serif font-bold text-[#4d3a2e]">1. Müşteri Bilgileri</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -222,13 +215,12 @@ export default function Odeme() {
                         </div>
                     </section>
 
-                    {/* 2. Teslimat Adresi */}
                     <section className="pt-8 border-t border-gray-100 space-y-6">
                         <h2 className="text-2xl font-serif font-bold text-[#4d3a2e]">2. Teslimat Adresi</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                             <div className="space-y-1">
                                 <label className="text-xs font-bold text-[#978175] uppercase ml-1">Adres Başlığı</label>
-                                <input type="text" placeholder="Ev, İş vb." className={inputStyle} value={addressData.baslik} onChange={(e) => setAddressData({ ...addressData, baslik: e.target.value })} />
+                                <input type="text" className={inputStyle} value={addressData.baslik} onChange={(e) => setAddressData({ ...addressData, baslik: e.target.value })} />
                             </div>
                             <div className="space-y-1">
                                 <label className="text-xs font-bold text-[#978175] uppercase ml-1">Posta Kodu</label>
@@ -249,7 +241,6 @@ export default function Odeme() {
                         </div>
                     </section>
 
-                    {/* 3. Ödeme Yöntemi */}
                     <section className="pt-8 border-t border-gray-100">
                         <h2 className="text-2xl font-serif font-bold text-[#4d3a2e] mb-6">3. Ödeme Yöntemi</h2>
                         <div className="flex gap-4 mb-8">
@@ -299,7 +290,6 @@ export default function Odeme() {
                     </section>
                 </form>
 
-                {/* Sağ taraf artık bir asilzade gibi bağımsız bir bileşen */}
                 <SepetOzetiOdeme
                     cartTotal={cartTotal}
                     isProcessing={isProcessing}

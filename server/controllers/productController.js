@@ -2,21 +2,22 @@ const pool = require("../db");
 
 // Yardımcı Fonksiyon: DB satırlarını frontend formatına dönüştürür
 function mapProduct(row) {
+  if (!row) return null;
   return {
     id: row.id,
-    isim: row.urun_adi,
-    ad: row.urun_adi,
-    aciklama: row.aciklama,
-    fiyat: Number(row.fiyat),
-    stok: row.stok_adedi,
-    kategori: row.kategori_adi,
-    altKategori: row.alt_kategori_adi,
+    isim: row.urun_adi || "İsimsiz Ürün",
+    ad: row.urun_adi || "İsimsiz Ürün",
+    aciklama: row.aciklama || "",
+    fiyat: row.fiyat ? Number(row.fiyat) : 0,
+    stok: row.stok_adedi || 0,
+    kategori: row.kategori_adi || "Genel",
+    altKategori: row.alt_kategori_adi || "Genel",
     resim: row.gorsel_yolu || "/images/bos.jpg",
     renk: "Standart"
   };
 }
 
-// 1. Canlı Arama (Dropdown için hızlı sonuçlar)
+// 1. Canlı Arama (Dropdown Menü İçin)
 exports.liveSearch = async (req, res) => {
   const { q } = req.query;
   const queryTerm = `%${q}%`;
@@ -26,9 +27,9 @@ exports.liveSearch = async (req, res) => {
   }
 
   try {
-    // Ürünlerde Ara (İlk 5 sonuç)
+    // Ürünlerde Ara
     const urunler = await pool.query(`
-      SELECT u.id, u.urun_adi, u.fiyat, k.kategori_adi, ak.alt_k_adi as alt_kategori_adi,
+      SELECT u.id, u.urun_adi, u.fiyat, k.kategori_adi, ak.alt_kategori_adi,
       (SELECT ug.gorsel_yolu FROM public.urun_gorsel ug WHERE ug.urun_id = u.id LIMIT 1) as gorsel_yolu
       FROM public.urun u
       LEFT JOIN public.alt_kategori ak ON ak.id = u.alt_kategori_id
@@ -37,17 +38,21 @@ exports.liveSearch = async (req, res) => {
       LIMIT 5
     `, [queryTerm]);
 
-    // Kategorilerde Ara (İlk 3 sonuç)
-    const kategoriler = await pool.query(
-      "SELECT id, kategori_adi as ad FROM public.kategori WHERE kategori_adi ILIKE $1 LIMIT 3",
-      [queryTerm]
-    );
+    // Kategorilerde Ara
+    const kategoriler = await pool.query(`
+      SELECT id, kategori_adi, kategori_adi as ad 
+      FROM public.kategori 
+      WHERE kategori_adi ILIKE $1 
+      LIMIT 3
+    `, [queryTerm]);
 
-    // Alt Kategorilerde Ara (İlk 3 sonuç)
-    const altKategoriler = await pool.query(
-      "SELECT id, alt_k_adi as ad FROM public.alt_kategori WHERE alt_k_adi ILIKE $1 LIMIT 3",
-      [queryTerm]
-    );
+    // Alt Kategorilerde Ara
+    const altKategoriler = await pool.query(`
+      SELECT id, alt_kategori_adi, alt_kategori_adi as ad 
+      FROM public.alt_kategori 
+      WHERE alt_kategori_adi ILIKE $1 
+      LIMIT 3
+    `, [queryTerm]);
 
     res.json({
       urunler: urunler.rows.map(mapProduct),
@@ -55,19 +60,19 @@ exports.liveSearch = async (req, res) => {
       altKategoriler: altKategoriler.rows
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ mesaj: "Canlı arama hatası" });
+    console.error("Canlı arama hatası:", err);
+    res.status(500).json({ mesaj: "Hata oluştu" });
   }
 };
 
-// 2. Genel Arama (Enter'a basınca tüm sonuçları getirir)
+// 2. Genel Arama (Arama Sonuçları Sayfası İçin)
 exports.searchProducts = async (req, res) => {
   const { q } = req.query;
   const queryTerm = `%${q}%`;
 
   try {
     const query = `
-      SELECT u.*, k.kategori_adi, ak.alt_k_adi as alt_k_adi,
+      SELECT u.id, u.urun_adi, u.aciklama, u.fiyat, u.stok_adedi, k.kategori_adi, ak.alt_kategori_adi,
       (SELECT ug.gorsel_yolu FROM public.urun_gorsel ug WHERE ug.urun_id = u.id ORDER BY ug.ana_gorsel_mi DESC LIMIT 1) as gorsel_yolu
       FROM public.urun u
       LEFT JOIN public.alt_kategori ak ON ak.id = u.alt_kategori_id
@@ -75,31 +80,29 @@ exports.searchProducts = async (req, res) => {
       WHERE u.urun_adi ILIKE $1 
          OR u.aciklama ILIKE $1 
          OR k.kategori_adi ILIKE $1 
-         OR ak.alt_k_adi ILIKE $1
+         OR ak.alt_kategori_adi ILIKE $1
       ORDER BY u.eklenme_tarihi DESC
     `;
     const result = await pool.query(query, [queryTerm]);
     res.json(result.rows.map(mapProduct));
   } catch (err) {
-    console.error(err);
+    console.error("Arama hatası:", err);
     res.status(500).json({ mesaj: "Arama hatası" });
   }
 };
 
-// 3. Mevcut Tüm Ürünleri Getir (Filtreleme Destekli)
+// 3. Tüm Ürünleri Getir (Kategori Filtreleme Destekli)
 exports.getAll = async (req, res) => {
   try {
     const { q, kategori_id, alt_kategori_id } = req.query;
-
     let query = `
-      SELECT u.id, u.urun_adi, u.aciklama, u.fiyat, u.stok_adedi, k.kategori_adi, ak.alt_k_adi as alt_k_adi,
+      SELECT u.id, u.urun_adi, u.aciklama, u.fiyat, u.stok_adedi, k.kategori_adi, ak.alt_kategori_adi,
       (SELECT ug.gorsel_yolu FROM public.urun_gorsel ug WHERE ug.urun_id = u.id ORDER BY ug.ana_gorsel_mi DESC LIMIT 1) AS gorsel_yolu
       FROM public.urun u
       LEFT JOIN public.alt_kategori ak ON ak.id = u.alt_kategori_id
       LEFT JOIN public.kategori k ON k.id = ak.ana_kategori_id
       WHERE 1=1
     `;
-
     const params = [];
     let i = 1;
 
@@ -108,13 +111,11 @@ exports.getAll = async (req, res) => {
       params.push(`%${q}%`);
       i++;
     }
-
     if (kategori_id) {
       query += ` AND k.id = $${i}`;
       params.push(kategori_id);
       i++;
     }
-
     if (alt_kategori_id) {
       query += ` AND ak.id = $${i}`;
       params.push(alt_kategori_id);
@@ -125,7 +126,7 @@ exports.getAll = async (req, res) => {
     const result = await pool.query(query, params);
     res.json(result.rows.map(mapProduct));
   } catch (err) {
-    console.error(err);
+    console.error("Ürün listeleme hatası:", err);
     res.status(500).json({ mesaj: "Ürünler alınamadı" });
   }
 };
@@ -134,7 +135,7 @@ exports.getAll = async (req, res) => {
 exports.getOne = async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT u.id, u.urun_adi, u.aciklama, u.fiyat, u.stok_adedi, k.kategori_adi, ak.alt_k_adi as alt_k_adi,
+      SELECT u.id, u.urun_adi, u.aciklama, u.fiyat, u.stok_adedi, k.kategori_adi, ak.alt_kategori_adi,
       (SELECT ug.gorsel_yolu FROM public.urun_gorsel ug WHERE ug.urun_id = u.id LIMIT 1) AS gorsel_yolu
       FROM public.urun u
       LEFT JOIN public.alt_kategori ak ON ak.id = u.alt_kategori_id
@@ -145,7 +146,7 @@ exports.getOne = async (req, res) => {
     if (result.rows.length === 0) return res.status(404).json({ mesaj: "Ürün bulunamadı" });
     res.json(mapProduct(result.rows[0]));
   } catch (err) {
-    console.error(err);
+    console.error("Detay hatası:", err);
     res.status(500).json({ mesaj: "Ürün alınamadı" });
   }
 };
@@ -165,7 +166,7 @@ exports.create = async (req, res) => {
     }
     res.status(201).json({ mesaj: "Ürün eklendi", urun });
   } catch (err) {
-    console.error(err);
+    console.error("Ekleme hatası:", err);
     res.status(500).json({ mesaj: "Ürün eklenemedi" });
   }
 };
@@ -189,7 +190,7 @@ exports.update = async (req, res) => {
     }
     res.json({ mesaj: "Ürün güncellendi" });
   } catch (err) {
-    console.error(err);
+    console.error("Güncelleme hatası:", err);
     res.status(500).json({ mesaj: "Ürün güncellenemedi" });
   }
 };
@@ -200,7 +201,7 @@ exports.remove = async (req, res) => {
     await pool.query("DELETE FROM public.urun WHERE id = $1", [req.params.id]);
     res.json({ mesaj: "Ürün silindi" });
   } catch (err) {
-    console.error(err);
+    console.error("Silme hatası:", err);
     res.status(500).json({ mesaj: "Ürün silinemedi" });
   }
 };
