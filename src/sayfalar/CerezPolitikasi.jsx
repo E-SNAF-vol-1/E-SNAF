@@ -6,7 +6,7 @@ export default function CerezPolitikasi() {
         <div className="min-h-screen bg-[#fdfaf1] p-6 md:p-12 font-sans text-[#5d4037]">
             <div className="max-w-[1000px] mx-auto bg-white rounded-[2.5rem] p-8 md:p-16 shadow-2xl border border-[#d2b48c]">
 
-                <Link to="/" className="text-orange-600 font-bold text-sm mb-10 inline-flex items-center gap-2 hover:underline group">
+                <Link to="/" className="text-black font-bold text-sm mb-10 inline-flex items-center gap-2 hover:underline group">
                     <span className="transition-transform group-hover:-translate-x-1">←</span> Mağazaya Geri Dön
                 </Link>
 
@@ -21,7 +21,7 @@ export default function CerezPolitikasi() {
 
                     <div>
                         <h2 className="text-2xl font-bold text-[#2b241a] mb-4 flex items-center gap-2">
-                            <span className="w-2 h-8 bg-orange-600 rounded-full inline-block"></span>
+                            <span className="w-2 h-8 bg-black rounded-full inline-block"></span>
                             1. Veri Sorumlusu
                         </h2>
                         <p>
@@ -31,7 +31,7 @@ export default function CerezPolitikasi() {
 
                     <div>
                         <h2 className="text-2xl font-bold text-[#2b241a] mb-4 flex items-center gap-2">
-                            <span className="w-2 h-8 bg-orange-600 rounded-full inline-block"></span>
+                            <span className="w-2 h-8 bg-black rounded-full inline-block"></span>
                             2. Kişisel Verilerin İşlenme Amacı
                         </h2>
                         <p className="mb-4">Toplanan kişisel verileriniz, aşağıdaki amaçlarla Kanun’un 5. ve 6. maddelerinde belirtilen kişisel veri işleme şartları dahilinde işlenecektir:</p>
@@ -45,7 +45,7 @@ export default function CerezPolitikasi() {
 
                     <div>
                         <h2 className="text-2xl font-bold text-[#2b241a] mb-4 flex items-center gap-2">
-                            <span className="w-2 h-8 bg-orange-600 rounded-full inline-block"></span>
+                            <span className="w-2 h-8 bg-black rounded-full inline-block"></span>
                             3. Kullanılan Çerez Türleri
                         </h2>
                         <div className="overflow-x-auto">
@@ -75,7 +75,7 @@ export default function CerezPolitikasi() {
 
                     <div>
                         <h2 className="text-2xl font-bold text-[#2b241a] mb-4 flex items-center gap-2">
-                            <span className="w-2 h-8 bg-orange-600 rounded-full inline-block"></span>
+                            <span className="w-2 h-8 bg-black rounded-full inline-block"></span>
                             4. Kişisel Verilerin Aktarımı
                         </h2>
                         <p>
@@ -85,7 +85,7 @@ export default function CerezPolitikasi() {
 
                     <div>
                         <h2 className="text-2xl font-bold text-[#2b241a] mb-4 flex items-center gap-2">
-                            <span className="w-2 h-8 bg-orange-600 rounded-full inline-block"></span>
+                            <span className="w-2 h-8 bg-black rounded-full inline-block"></span>
                             5. Kanun’un 11. Maddesi Kapsamındaki Haklarınız
                         </h2>
                         <p className="mb-4">Kişisel veri sahibi olarak Kanun uyarınca aşağıdaki haklara sahipsiniz:</p>
@@ -101,7 +101,7 @@ export default function CerezPolitikasi() {
 
                 <div className="mt-16 pt-8 border-t-2 border-[#f5f0db] text-center">
                     <p className="text-[#8d6e63] text-sm">
-                        İletişim ve başvuru talepleriniz için: <span className="text-orange-600 font-bold">destek@e-snaf.com</span>
+                        İletişim ve başvuru talepleriniz için: <span className="text-black font-bold">destek@e-snaf.com</span>
                     </p>
                 </div>
 

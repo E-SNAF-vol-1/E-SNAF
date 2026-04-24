@@ -81,7 +81,7 @@ export default function SepetNesneleri({ item }) {
 
             <button
                 onClick={() => dispatch({ type: "SEPETTEMIZLE", payload: item.id })}
-                className="p-3 text-gray-400 hover:text-red-600 transition-all group/trash"
+                className="p-3 text-gray-400 hover:text-black transition-all group/trash"
             >
                 <i className="bx bx-trash text-2xl group-hover/trash:rotate-12 transition-transform"></i>
             </button>

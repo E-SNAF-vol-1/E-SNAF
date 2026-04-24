@@ -1,11 +1,50 @@
 @import "tailwindcss";
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* 1. TAILWIND V4 TEMA DEĞİŞKENLERİNİ TANIMLA */
+@theme {
+  --color-brand-bg: var(--bg-color);
+  --color-brand-card: var(--card-color);
+  --color-brand-text: var(--text-color);
+  --color-brand-accent: var(--accent-color);
+}
 
+/* 2. TEMALARA GÖRE RENK DEĞERLERİNİ ATAMA */
+
+/* Varsayılan Bej Tema */
+:root {
+  --bg-color: #f8f5ea;
+  --card-color: #ffffff;
+  --text-color: #1a1a1a;
+  --accent-color: #5d4037; /* Kahverengi */
+}
+
+/* Koyu Tema (.dark sınıfı tetikler) */
+.dark {
+  --bg-color: #121212;
+  --card-color: #1d1d1d;
+  --text-color: #f3f4f6;
+  --accent-color: #fbbf24; /* Sarı/Amber */
+}
+
+/* Okyanus Teması (data-theme özniteliği tetikler) */
+[data-theme='ocean'] {
+  --bg-color: #87CEFA;
+  --card-color: #ffffff;
+  --text-color: #0c4a6e;
+  --accent-color: #0284c7; /* Mavi */
+}
+
+/* 3. TEMEL STİLLER (BODY VE YAZI TİPİ) */
 @layer base {
-    html {
-        font-family: 'Roboto', sans-serif;
-    }
+  * {
+    @apply transition-colors duration-500 ease-in-out;
+  }
+  
+  html {
+    font-family: 'Roboto', sans-serif;
+  }
+  
+  body {
+    @apply bg-brand-bg text-brand-text;
+  }
 }
