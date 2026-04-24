@@ -116,9 +116,9 @@ exports.getAll = async (req, res) => {
       params.push(kategori_id);
       i++;
     }
-    if (alt_k_id) { // Eski koddaki alt_kategori_id ismiyle uyumlu
+    if (alt_kategori_id) {
       query += ` AND ak.id = $${i}`;
-      params.push(alt_k_id);
+      params.push(alt_kategori_id);
       i++;
     }
 
