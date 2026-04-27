@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, QueryFailedError } from 'typeorm';
 import { Product } from './product.entity';
 import { ProductImage } from './product-image.entity';
+import { User } from './user.entity';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 // sharp paketinin tipleri olmadığı için require kullanıldı
@@ -32,6 +33,12 @@ export class ProductService {
     private readonly productRepository: Repository<Product>,
     @InjectRepository(ProductImage)
     private readonly productImageRepository: Repository<ProductImage>,
+
+    // --- BUNU EKLE ---
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+    // -----------------
+
     private readonly dataSource: DataSource,
   ) {}
 
@@ -581,5 +588,17 @@ export class ProductService {
     return (await this.productImageRepository.findOne({
       where: { id: imageId },
     })) as ProductImage;
+  }
+
+  // --- MESAJ DURUMU GÜNCELLEME FONKSİYONU ---
+  async updateUserMessageStatus(id: number, yeniDurum: string): Promise<void> {
+    const user = await this.userRepository.findOne({ where: { id } });
+    if (!user) {
+      throw new Error(`${id} ID'li müşteri bulunamadı`);
+    }
+
+    await this.userRepository.update(id, {
+      mesaj_durumu: yeniDurum,
+    });
   }
 }

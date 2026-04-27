@@ -643,6 +643,9 @@ export class AdminController {
             <button class="tab-btn" onclick="switchTab('orders')">📋 Sipariş Takibi</button>
             <button class="tab-btn" onclick="switchTab('stock')">📊 Stok Takibi</button>
             <button class="tab-btn" onclick="switchTab('statistics')">📈 İstatistik</button>
+            <button class="tab-btn" onclick="switchTab('mesajlar')">✉️ Mesajlar / Şikayetler</button>
+            <button class="tab-btn" onclick="switchTab('musteri-sikayetleri')">✉️ Müşteri Şikayetleri</button>
+            
           </div>
           
           <div id="users" class="tab-content active">
@@ -743,6 +746,14 @@ export class AdminController {
             <h2>📈 İstatistik</h2>
             <p class="empty">🚀 Bu özellik yakında aktif olacaktır.</p>
           </div>
+
+          <div id="mesajlar" class="tab-content">
+            <div id="mesaj-main-content"></div>
+          </div>
+
+          <div id="musteri-sikayetleri" class="tab-content">
+            <div id="musteri-sikayetleri-content"></div>
+          </div>
         </div>
         
         <script>
@@ -757,6 +768,12 @@ export class AdminController {
             event.target.classList.add('active');
             if (tabName === 'orders') {
               showSiparisler();
+            }
+            if (tabName === 'mesajlar') {
+              showMesajlar();
+            }
+            if (tabName === 'musteri-sikayetleri') {
+              showMusteriMesajlari();
             }
           }
 
@@ -968,6 +985,138 @@ export class AdminController {
               alert('Sunucuya bağlanılamadı.');
             }
           }
+
+          async function showMesajlar() {
+            const content = document.getElementById('mesaj-main-content');
+            content.innerHTML = \`
+              <div class="card" style="background:white; padding:20px; border-radius:8px; box-shadow:0 4px 6px rgba(0,0,0,0.1);">
+                <h2 style="margin-bottom:20px;">✉️ Gelen Mesajlar</h2>
+                <table style="width:100%; border-collapse: collapse;">
+                  <thead>
+                    <tr style="background: #f8f9fa;">
+                      <th style="padding:12px; border:1px solid #ddd;">Tarih</th>
+                      <th style="padding:12px; border:1px solid #ddd;">Ad Soyad</th>
+                      <th style="padding:12px; border:1px solid #ddd;">Konu</th>
+                      <th style="padding:12px; border:1px solid #ddd;">Durum</th>
+                      <th style="padding:12px; border:1px solid #ddd;">İşlem</th>
+                    </tr>
+                  </thead>
+                  <tbody id="mesaj-list-body">
+                    <tr><td colspan="5" style="text-align:center; padding:20px;">Yükleniyor...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            \`;
+
+            try {
+              const res = await fetch('/mesaj/liste');
+              const data = await res.json();
+              const tbody = document.getElementById('mesaj-list-body');
+
+              tbody.innerHTML = data.map(m => \`
+                <tr style="background: \${m.durum === 'Okunmadı' ? '#fff9db' : 'white'}">
+                  <td style="padding:12px; border:1px solid #ddd;">\${new Date(m.tarih).toLocaleDateString()}</td>
+                  <td style="padding:12px; border:1px solid #ddd;">\${m.ad_soyad}</td>
+                  <td style="padding:12px; border:1px solid #ddd;">\${m.konu}</td>
+                  <td style="padding:12px; border:1px solid #ddd;">\${m.durum}</td>
+                  <td style="padding:12px; border:1px solid #ddd;">
+                    <button onclick="mesajOku(\${m.id})" style="background:#764ba2; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">Oku</button>
+                  </td>
+                </tr>
+              \`).join('');
+            } catch (err) {
+              document.getElementById('mesaj-list-body').innerHTML = '<tr><td colspan="5" style="text-align:center; color:red;">Veri çekilemedi!</td></tr>';
+            }
+          }
+
+          async function mesajOku(id) {
+            const res = await fetch(\`/mesaj/detay/\${id}\`);
+            const m = await res.json();
+            alert(\`Gönderen: \${m.ad_soyad}\\nE-posta: \${m.eposta}\\nMesaj: \${m.mesaj_icerigi}\`);
+            showMesajlar();
+          }
+
+          async function showMusteriMesajlari() {
+            const content = document.getElementById('musteri-sikayetleri-content');
+            content.innerHTML = \`
+              <div class="card" style="background:white; padding:20px; border-radius:8px; box-shadow:0 4px 6px rgba(0,0,0,0.1);">
+                <h2 style="margin-bottom:20px;">✉️ Gelen Mesajlar (Müşteri Tablosundan)</h2>
+                <table style="width:100%; border-collapse: collapse;">
+                  <thead>
+                    <tr style="background: #764ba2; color:white;">
+                      <th style="padding:12px; border:1px solid #ddd;">Tarih</th>
+                      <th style="padding:12px; border:1px solid #ddd;">Ad Soyad</th>
+                      <th style="padding:12px; border:1px solid #ddd;">Mesaj</th>
+                      <th style="padding:12px; border:1px solid #ddd;">Durum</th>
+                      <th style="padding:12px; border:1px solid #ddd;">İşlem</th>
+                    </tr>
+                  </thead>
+                  <tbody id="mesaj-list-body">
+                    <tr><td colspan="5" style="text-align:center; padding:20px;">Yükleniyor...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            \`;
+
+            const tbody = document.getElementById('mesaj-list-body');
+
+            try {
+              const res = await fetch('/admin/users');
+              if (!res.ok) throw new Error('Sunucu hatası: ' + res.status);
+
+              const users = await res.json();
+
+              const mesajliKullanicilar = users.filter(u => u.son_mesaj !== null && u.son_mesaj !== "");
+
+              if (mesajliKullanicilar.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px;">Mesajı olan müşteri bulunamadı.</td></tr>';
+                return;
+              }
+
+              tbody.innerHTML = mesajliKullanicilar.map(u => \`
+                <tr style="background: \${u.mesaj_durumu === 'Okunmadı' ? '#fff9db' : 'white'}">
+                  <td style="padding:12px; border:1px solid #ddd;">\${u.mesaj_tarihi ? new Date(u.mesaj_tarihi).toLocaleDateString() : '-'}</td>
+                  <td style="padding:12px; border:1px solid #ddd;"><b>\${u.ad || ''} \${u.soyad || ''}</b></td>
+                  <td style="padding:12px; border:1px solid #ddd;">\${u.son_mesaj}</td>
+                  <td style="padding:12px; border:1px solid #ddd; color: \${u.mesaj_durumu === 'Okunmadı' ? 'red' : 'green'}">
+                    \${u.mesaj_durumu || 'Okunmadı'}
+                  </td>
+                  <td style="padding:12px; border:1px solid #ddd;">
+                    <button onclick="openReplyModal(\${u.id}, '\${u.ad || ''} \${u.soyad || ''}', '\${u.email || ''}')"
+                            style="background:#764ba2; color:white; border:none; padding:5px 10px; cursor:pointer; border-radius:4px;">
+                      Cevapla
+                    </button>
+                  </td>
+                </tr>
+              \`).join('');
+            } catch (err) {
+              console.error("Hata Detayı:", err);
+              tbody.innerHTML = '<tr><td colspan="5" style="color:red; text-align:center; padding:20px;">Hata: ' + err.message + '</td></tr>';
+            }
+          }
+
+          async function openReplyModal(userId, userName, userEmail) {
+            const cevap = prompt(\`\${userName} (\${userEmail}) kullanıcısına cevap yazın:\`);
+
+            if (cevap) {
+              try {
+                const res = await fetch(\`/admin/users/reply/\${userId}\`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ mesaj: cevap })
+                });
+
+                if (res.ok) {
+                  alert("Cevabınız iletildi ve mesaj 'Okundu' olarak işaretlendi.");
+                  showMusteriMesajlari();
+                } else {
+                  alert("Bir hata oluştu.");
+                }
+              } catch (err) {
+                console.error(err);
+              }
+            }
+          }
         </script>
       </body>
       </html>
@@ -1005,6 +1154,21 @@ export class AdminController {
         `<p style="color: red; padding: 20px;">Ürün eklenirken hata oluştu: ${error.message}</p><a href="/Admin/dashboard">Geri Dön</a>`,
       );
     }
+  }
+
+  @Get('users')
+  async getAllUsers() {
+    return await this.userRepo.find();
+  }
+
+  @Post('users/reply/:id')
+  async replyToMessage(
+    @Param('id') id: number,
+    @Body('mesaj') mesaj: string,
+  ) {
+    console.log(`ID: ${id} kullanıcısına cevap: ${mesaj}`);
+    await this.userRepo.update(id, { mesaj_durumu: 'Okundu' } as any);
+    return { success: true };
   }
 
   @Get('dashboard')
