@@ -14,6 +14,7 @@ const weatherRoutes = require("./routes/weatherRoutes");
 const pool = require("./db");
 
 const app = express();
+
 console.log("weatherRoutes yüklendi");
 
 const allowedOrigins = [
@@ -22,26 +23,26 @@ const allowedOrigins = [
   process.env.CLIENT_URL
 ].filter(Boolean);
 
-// server.js içindeki cors bölümünü bu şekilde güncelleyin
 app.use(cors({
-  origin: [
-    "http://localhost:5173",
-    "https://esnaf.apps.srv.aykutdurgut.com.tr"
-  ],
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("CORS hatası: " + origin));
+    }
+  },
+  credentials: true
 }));
 
 app.use(express.json());
-app.set("trust proxy", 1);
+
 app.use(session({
   secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: true, // Sadece HTTPS üzerinden gönderilir
+    secure: false,
     httpOnly: true,
-    sameSite: "none", // Cross-site isteklerde çerez iletimi için gereklidir
     maxAge: 1000 * 60 * 60 * 24
   }
 }));
