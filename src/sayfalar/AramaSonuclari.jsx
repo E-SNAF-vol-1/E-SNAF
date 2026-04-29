@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 import UrunKartlari from "../components/UrunKartlari";
 
@@ -10,95 +10,124 @@ const api = axios.create({
 
 export default function AramaSonuclari() {
     const location = useLocation();
+    const navigate = useNavigate();
     const queryParams = new URLSearchParams(location.search);
-    const aramaSorgusu = queryParams.get("q") || ""; // Boş sorgu koruması
+    const aramaSorgusu = queryParams.get("q") || ""; 
 
     const [sonuclar, setSonuclar] = useState([]);
     const [yukleniyor, setYukleniyor] = useState(false);
     const [hata, setHata] = useState(null);
 
     useEffect(() => {
+        let isMounted = true;
+        
         const verileriGetir = async () => {
-            // Sorgu çok kısaysa veya boşsa boş sonuç dön
-            if (!aramaSorgusu.trim() || aramaSorgusu.length < 2) {
+            const temizSorgu = aramaSorgusu.trim();
+            if (!temizSorgu) {
                 setSonuclar([]);
                 return;
             }
 
-            setYukleniyor(true);
+            if (isMounted) setYukleniyor(true);
             setHata(null);
 
             try {
-                // Backend'deki genel arama endpoint'ine istek atıyoruz
-                const res = await api.get(`/products/search?q=${encodeURIComponent(aramaSorgusu)}`);
-
-                // Gelen verinin dizi olduğundan emin oluyoruz
-                if (Array.isArray(res.data)) {
-                    setSonuclar(res.data);
-                } else {
-                    setSonuclar([]);
+                const res = await api.get(`/products/search?q=${encodeURIComponent(temizSorgu)}`);
+                
+                if (isMounted) {
+                    if (Array.isArray(res.data)) {
+                        setSonuclar(res.data);
+                    } else {
+                        setSonuclar([]);
+                    }
                 }
             } catch (err) {
-                console.error("Arama sonuçları getirilemedi:", err);
-                setHata("Sonuçlar yüklenirken bir sorun oluştu.");
+                if (isMounted) {
+                    console.error("Arama hatası:", err);
+                    setHata("Sonuçlar yüklenirken bir sorun oluştu.");
+                }
             } finally {
-                setYukleniyor(false);
+                if (isMounted) setYukleniyor(false);
             }
         };
 
         verileriGetir();
+        return () => { isMounted = false; };
     }, [aramaSorgusu]);
 
     return (
-        <div className="max-w-7xl mx-auto px-4 py-10 min-h-screen">
-            {/* Başlık Bölümü */}
-            <div className="mb-8 border-b border-[#f0ebe0] pb-6">
-                <h1 className="text-2xl md:text-3xl font-serif text-[#5d4037]">
-                    {aramaSorgusu ? (
-                        <>
-                            "<span className="font-bold italic text-[#d2b48c]">{aramaSorgusu}</span>" için sonuçlar
-                        </>
-                    ) : (
-                        "Tüm Ürünler"
-                    )}
-                </h1>
-                {!yukleniyor && sonuclar.length > 0 && (
-                    <p className="text-sm text-gray-500 mt-2">{sonuclar.length} ürün bulundu.</p>
-                )}
-            </div>
+        <div className="bg-brand-bg min-h-screen transition-colors duration-500 overflow-x-hidden">
+            <div className="max-w-7xl mx-auto px-4 py-10">
+                
+                {/* Üst Bölüm: Geri Dön Butonu ve Başlık */}
+                <div className="mb-8 border-b border-brand-text/10 pb-6">
+                    <div className="flex items-center gap-4">
+                        {/* Geri Dön Butonu - Ana Sayfaya Yönlendirir */}
+                        <button 
+                            onClick={() => navigate("/")} 
+                            className="flex items-center justify-center w-10 h-10 rounded-full bg-brand-card border border-brand-text/10 text-brand-text hover:bg-brand-accent hover:text-black transition-all duration-300 shadow-sm group"
+                            title="Ana Sayfaya Dön"
+                        >
+                            <i className="bx bx-left-arrow-alt text-2xl group-hover:-translate-x-1 transition-transform"></i>
+                        </button>
 
-            {/* İçerik Alanı */}
-            {yukleniyor ? (
-                <div className="flex flex-col justify-center items-center py-32">
-                    <i className="bx bx-loader-alt animate-spin text-5xl text-[#d2b48c]"></i>
-                    <p className="mt-4 text-[#a68b6d] font-light italic">Aranıyor, lütfen bekleyin</p>
-                </div>
-            ) : hata ? (
-                <div className="text-center py-20 bg-red-50 rounded-3xl border border-red-100 text-red-600">
-                    <i className="bx bx-error-circle text-5xl mb-4"></i>
-                    <p>{hata}</p>
-                </div>
-            ) : sonuclar.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                    {sonuclar.map((urun) => (
-                        // urun nesnesi varsa ve id'si varsa render et (Çifte koruma)
-                        urun && urun.id && (
-                            <UrunKartlari key={urun.id} urun={urun} gorunumModu="grid" />
-                        )
-                    ))}
-                </div>
-            ) : (
-                <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-[#d2b48c] shadow-sm">
-                    <div className="w-20 h-20 bg-[#f8f5eb] rounded-full flex items-center justify-center mx-auto mb-6">
-                        <i className="bx bx-search-alt text-4xl text-[#d2b48c]"></i>
+                        <h1 className="text-2xl md:text-3xl font-serif text-brand-text">
+                            {aramaSorgusu ? (
+                                <>
+                                    "<span className="font-bold italic text-brand-accent">{aramaSorgusu}</span>" için sonuçlar
+                                </>
+                            ) : (
+                                "Tüm Ürünler"
+                            )}
+                        </h1>
                     </div>
-                    <h3 className="text-lg font-bold text-[#5d4037] mb-2">E-SNAF'ta Bulamadık</h3>
-                    <p className="text-gray-500 max-w-xs mx-auto">
-                        "<span className="font-semibold">{aramaSorgusu}</span>" ile eşleşen bir ürünümüz yok.
-                        Farklı kelimelerle tekrar denemek ister misiniz?
-                    </p>
+                    
+                    {!yukleniyor && (
+                        <p className="text-sm text-brand-text/60 mt-2 ml-14">
+                            {sonuclar.length} ürün bulundu.
+                        </p>
+                    )}
                 </div>
-            )}
+
+                {/* İçerik Alanı */}
+                <div className="min-h-[400px]">
+                    {yukleniyor ? (
+                        <div className="flex flex-col justify-center items-center py-32 text-center">
+                            <i className="bx bx-loader-alt animate-spin text-5xl text-brand-accent"></i>
+                            <p className="mt-4 text-brand-text/60 font-light italic text-xl">Aranıyor, lütfen bekleyin...</p>
+                        </div>
+                    ) : hata ? (
+                        <div className="text-center py-20 bg-red-500/10 rounded-3xl border border-red-500/20 text-red-500">
+                            <i className="bx bx-error-circle text-5xl mb-4"></i>
+                            <p className="font-bold">{hata}</p>
+                        </div>
+                    ) : sonuclar.length > 0 ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                            {sonuclar.map((urun) => (
+                                <UrunKartlari key={urun.id} urun={urun} gorunumModu="grid" />
+                            ))}
+                        </div>
+                    ) : (
+                        /* Bulunamadı Ekranı */
+                        <div className="text-center py-20 bg-brand-card rounded-[2.5rem] border border-dashed border-brand-text/20 shadow-sm">
+                            <div className="w-20 h-20 bg-brand-bg rounded-full flex items-center justify-center mx-auto mb-6">
+                                <i className="bx bx-search-alt text-4xl text-brand-accent"></i>
+                            </div>
+                            <h3 className="text-lg font-bold text-brand-text mb-2">E-SNAF'ta Bulamadık</h3>
+                            <p className="text-brand-text/60 max-w-xs mx-auto">
+                                "<span className="font-semibold">{aramaSorgusu}</span>" ile eşleşen bir ürünümüz yok.
+                                Farklı kelimelerle tekrar denemek ister misiniz?
+                            </p>
+                            <button 
+                                onClick={() => navigate("/")}
+                                className="mt-6 px-6 py-2 bg-brand-accent text-black font-bold rounded-full hover:scale-105 transition-transform"
+                            >
+                                Ana Sayfaya Dön
+                            </button>
+                        </div>
+                    )}
+                </div>
+            </div>
         </div>
     );
 }
