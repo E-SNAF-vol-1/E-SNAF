@@ -19,15 +19,13 @@
   /* Filtre ve Ürünleri yan yana getiren ana kapsayıcı */
   .row, .main-container, .container {
     display: flex !important;
-    align-items: flex-start !important; /* İkisini de en tepeden başlatır */
+    align-items: flex-start !important; 
     padding-top: 0 !important;
     margin-top: 0 !important;
   }
 
   /* 2. FİLTRE PANELİ (SOL TARAF) İNCE AYAR */
   .filter-section, aside, .sidebar, .col-md-3, [class*="filter"] {
-    /* Eğer filtre yukarıda kalıyorsa bu rakamı artır (örn: 42px) */
-    /* Eğer filtre aşağıda kalıyorsa bu rakamı azalt (örn: 30px) */
     margin-top: 38px !important; 
     padding-top: 0 !important;
   }
@@ -35,20 +33,16 @@
   /* 3. ÜRÜN KARTLARI TASARIMI VE EFEKTLERİ */
   .card, [class*="card"], .product-item { 
     background-color: rgba(255, 255, 255, 0.03) !important;
-    border: 1px solid rgba(255, 255, 255, 0.1) !important; /* Varsayılan ince kenarlık */
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
     box-shadow: none !important;
     border-radius: 16px !important;
     background-clip: padding-box;
   }
 
-  /* --- ÜZERİNE GELİNDİĞİNDE (HOVER) ÇERÇEVE EFEKTİ --- */
   .card:hover, [class*="card"]:hover, .product-item:hover {
-    /* Altın sarısı temanın kenarlığı */
     border-color: #d2b48c !important; 
-    /* Hafif bir dış ışıma (glow) ekler */
     box-shadow: 0 0 20px rgba(210, 180, 140, 0.3) !important;
-    /* Kartı hafifçe yukarı kaldırır */
     transform: translateY(-5px) !important;
     background-color: rgba(255, 255, 255, 0.06) !important;
   }
@@ -64,7 +58,6 @@
     font-family: system-ui, -apple-system, sans-serif;
   }
 
-  /* Filtre içindeki beyaz kutuları temizle */
   input, select {
     background: rgba(255, 255, 255, 0.05) !important;
     border: 1px solid rgba(255, 255, 255, 0.1) !important;
@@ -79,13 +72,8 @@
 
 <body style="background: transparent !important;">
   <app-root></app-root>
-<<<<<<< HEAD
 
   <link rel="modulepreload" href="chunk-LO7MAJ2H.js">
-  <script src="main-HNGH6BD5.js" type="module"></script>
+  <script src="main-M2HPV46K.js" type="module"></script>
 </body>
 </html>
-=======
-<link rel="modulepreload" href="chunk-LO7MAJ2H.js"><script src="main-M2HPV46K.js" type="module"></script></body>
-</html>
->>>>>>> bcd6e116b2b4e103d21673ee5578e0b7576a6a6f

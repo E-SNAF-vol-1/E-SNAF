@@ -22,7 +22,7 @@ export default function Anasayfa() {
               src="/angular-urun/index.html"
               title="Angular Urun Listeleme"
               className="w-full h-[1400px] border-0 bg-transparent"
-              allowTransparency="true"
+              allowtransparency="true"
               style={{ backgroundColor: "transparent" }}
             />
           </div>

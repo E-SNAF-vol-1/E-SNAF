@@ -117,7 +117,6 @@ export default function Odeme() {
             }
         }
 
-        // Backend ile tam uyumlu temiz ürün listesi
         const sepetUrunleri = (state.SepetNesneleri || []).map((item) => ({
             urun_id: item.id || item.urun_id,
             fiyat: Number(item.fiyat || 0),
@@ -150,7 +149,7 @@ export default function Odeme() {
                         id: yeniSiparisId,
                         siparis_tarihi: new Date().toISOString(),
                         durum: "Hazırlanıyor",
-                        toplam_tutar: toplamTutar,
+                        totalPrice: toplamTutar,
                         odeme_yontemi: paymentMethod === "kredi_karti" ? "KREDİ KARTI" : "HAVALE / EFT"
                     },
                     musteri: { ...customerData },
@@ -170,10 +169,12 @@ export default function Odeme() {
     };
 
     const cartTotal = state.SepetNesneleri?.reduce((acc, item) => acc + (item.fiyat * item.miktar), 0) || 0;
-    const inputStyle = "w-full p-3 border border-[#d2b48c] rounded-lg outline-none focus:ring-2 focus:ring-[#4d3a2e] bg-white text-[#4d3a2e]";
+    
+    // Tema uyumlu input stili
+    const inputStyle = "w-full p-3.5 border border-brand-text/10 rounded-xl outline-none focus:ring-2 focus:ring-brand-accent bg-brand-bg text-brand-text transition-all placeholder:opacity-30";
 
     return (
-        <div className="p-10 bg-[#fdfbf7] min-h-screen relative">
+        <div className="p-6 md:p-12 bg-brand-bg min-h-screen relative transition-colors duration-500">
             {isSuccess && (
                 <SiparisBasarili
                     orderId={orderId}
@@ -183,104 +184,117 @@ export default function Odeme() {
             )}
 
             {hata.gorunur && (
-                <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[10000]">
-                    <div className="bg-[#5d4037] text-[#fdfbf7] px-8 py-4 rounded-full shadow-2xl flex items-center gap-3">
+                <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[10000] animate-in fade-in slide-in-from-top duration-300">
+                    <div className="bg-red-500 text-white px-8 py-4 rounded-full shadow-2xl flex items-center gap-3">
                         <i className="bx bx-error-circle text-xl"></i>
-                        <span className="font-semibold">{hata.mesaj}</span>
+                        <span className="font-bold uppercase text-xs tracking-widest">{hata.mesaj}</span>
                     </div>
                 </div>
             )}
 
             <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-10">
-                <form onSubmit={handleProcessOrder} className="lg:col-span-2 space-y-8 bg-white p-8 rounded-2xl shadow-sm border border-[#ede6ca]">
+                <form onSubmit={handleProcessOrder} className="lg:col-span-2 space-y-8 bg-brand-card p-8 md:p-12 rounded-[2.5rem] shadow-2xl border border-brand-text/5">
+                    
+                    {/* 1. Müşteri Bilgileri */}
                     <section className="space-y-6">
-                        <h2 className="text-2xl font-serif font-bold text-[#4d3a2e]">1. Müşteri Bilgileri</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                            <div className="space-y-1">
-                                <label className="text-xs font-bold text-[#978175] uppercase ml-1">Ad</label>
+                        <h2 className="text-2xl font-serif font-black text-brand-text flex items-center gap-3">
+                            <span className="w-8 h-8 bg-brand-accent text-brand-bg rounded-full flex items-center justify-center text-sm font-bold">1</span>
+                            Müşteri Bilgileri
+                        </h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-bold text-brand-text/40 uppercase ml-1 tracking-widest">Ad</label>
                                 <input type="text" className={inputStyle} value={customerData.ad} onChange={(e) => handleSadeceHarfGiris(e.target.value, customerData, setCustomerData, "ad")} />
                             </div>
-                            <div className="space-y-1">
-                                <label className="text-xs font-bold text-[#978175] uppercase ml-1">Soyad</label>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-bold text-brand-text/40 uppercase ml-1 tracking-widest">Soyad</label>
                                 <input type="text" className={inputStyle} value={customerData.soyad} onChange={(e) => handleSadeceHarfGiris(e.target.value, customerData, setCustomerData, "soyad")} />
                             </div>
-                            <div className="space-y-1">
-                                <label className="text-xs font-bold text-[#978175] uppercase ml-1">E-Posta</label>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-bold text-brand-text/40 uppercase ml-1 tracking-widest">E-Posta</label>
                                 <input type="email" className={inputStyle} value={customerData.email} onChange={(e) => setCustomerData({ ...customerData, email: e.target.value })} />
                             </div>
-                            <div className="space-y-1">
-                                <label className="text-xs font-bold text-[#978175] uppercase ml-1">Telefon</label>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-bold text-brand-text/40 uppercase ml-1 tracking-widest">Telefon</label>
                                 <input type="tel" value={customerData.telefon} className={inputStyle} onChange={(e) => handleTelefonGiris(e.target.value)} />
                             </div>
                         </div>
                     </section>
 
-                    <section className="pt-8 border-t border-gray-100 space-y-6">
-                        <h2 className="text-2xl font-serif font-bold text-[#4d3a2e]">2. Teslimat Adresi</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                            <div className="space-y-1">
-                                <label className="text-xs font-bold text-[#978175] uppercase ml-1">Adres Başlığı</label>
-                                <input type="text" className={inputStyle} value={addressData.baslik} onChange={(e) => setAddressData({ ...addressData, baslik: e.target.value })} />
+                    {/* 2. Teslimat Adresi */}
+                    <section className="pt-10 border-t border-brand-text/5 space-y-6">
+                        <h2 className="text-2xl font-serif font-black text-brand-text flex items-center gap-3">
+                             <span className="w-8 h-8 bg-brand-accent text-brand-bg rounded-full flex items-center justify-center text-sm font-bold">2</span>
+                             Teslimat Adresi
+                        </h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-bold text-brand-text/40 uppercase ml-1 tracking-widest">Adres Başlığı</label>
+                                <input type="text" className={inputStyle} value={addressData.baslik} onChange={(e) => setAddressData({ ...addressData, baslik: e.target.value })} placeholder="Örn: Ev Adresim" />
                             </div>
-                            <div className="space-y-1">
-                                <label className="text-xs font-bold text-[#978175] uppercase ml-1">Posta Kodu</label>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-bold text-brand-text/40 uppercase ml-1 tracking-widest">Posta Kodu</label>
                                 <input type="text" value={addressData.postaKodu} className={inputStyle} onChange={(e) => handlePostaKoduGiris(e.target.value)} />
                             </div>
-                            <div className="space-y-1">
-                                <label className="text-xs font-bold text-[#978175] uppercase ml-1">Şehir</label>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-bold text-brand-text/40 uppercase ml-1 tracking-widest">Şehir</label>
                                 <input type="text" className={inputStyle} value={addressData.sehir} onChange={(e) => handleSadeceHarfGiris(e.target.value, addressData, setAddressData, "sehir")} />
                             </div>
-                            <div className="space-y-1">
-                                <label className="text-xs font-bold text-[#978175] uppercase ml-1">İlçe</label>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-bold text-brand-text/40 uppercase ml-1 tracking-widest">İlçe</label>
                                 <input type="text" className={inputStyle} value={addressData.ilce} onChange={(e) => handleSadeceHarfGiris(e.target.value, addressData, setAddressData, "ilce")} />
                             </div>
                         </div>
-                        <div className="space-y-1">
-                            <label className="text-xs font-bold text-[#978175] uppercase ml-1">Açık Adres</label>
-                            <textarea className={`${inputStyle} h-24 resize-none`} value={addressData.detay} onChange={(e) => setAddressData({ ...addressData, detay: e.target.value })} />
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-bold text-brand-text/40 uppercase ml-1 tracking-widest">Açık Adres</label>
+                            <textarea className={`${inputStyle} h-28 resize-none`} value={addressData.detay} onChange={(e) => setAddressData({ ...addressData, detay: e.target.value })} />
                         </div>
                     </section>
 
-                    <section className="pt-8 border-t border-gray-100">
-                        <h2 className="text-2xl font-serif font-bold text-[#4d3a2e] mb-6">3. Ödeme Yöntemi</h2>
+                    {/* 3. Ödeme Yöntemi */}
+                    <section className="pt-10 border-t border-brand-text/5">
+                        <h2 className="text-2xl font-serif font-black text-brand-text mb-6 flex items-center gap-3">
+                             <span className="w-8 h-8 bg-brand-accent text-brand-bg rounded-full flex items-center justify-center text-sm font-bold">3</span>
+                             Ödeme Yöntemi
+                        </h2>
                         <div className="flex gap-4 mb-8">
                             {["kredi_karti", "havale"].map((method) => (
                                 <button key={method} type="button" onClick={() => setPaymentMethod(method)}
-                                    className={`flex-1 py-4 border-2 rounded-xl font-bold transition-all ${paymentMethod === method ? "border-[#4d3a2e] bg-[#fdfbf7] text-[#4d3a2e]" : "border-gray-100 text-gray-400"}`}>
+                                    className={`flex-1 py-4 border-2 rounded-2xl font-black text-xs tracking-widest transition-all ${paymentMethod === method ? "border-brand-accent bg-brand-accent/5 text-brand-accent shadow-lg shadow-brand-accent/10" : "border-brand-text/5 text-brand-text/30"}`}>
                                     {method === "kredi_karti" ? "KREDİ KARTI" : "HAVALE / EFT"}
                                 </button>
                             ))}
                         </div>
 
                         {paymentMethod === "kredi_karti" && (
-                            <div className="bg-gray-50 p-6 rounded-2xl space-y-5 border border-[#ede6ca]">
-                                <div className="space-y-1">
-                                    <label className="text-xs font-bold text-[#978175] uppercase ml-1">Kart Sahibi</label>
-                                    <input type="text" className={`${inputStyle} uppercase`} value={cardDetails.holder}
+                            <div className="bg-brand-bg/50 p-8 rounded-3xl space-y-6 border border-brand-text/5 animate-in slide-in-from-bottom-2 duration-500">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-bold text-brand-text/40 uppercase ml-1 tracking-widest">Kart Sahibi</label>
+                                    <input type="text" className={`${inputStyle} uppercase font-bold`} value={cardDetails.holder}
                                         onChange={(e) => handleSadeceHarfGiris(e.target.value, cardDetails, setCardDetails, "holder")} />
                                 </div>
-                                <div className="space-y-1">
-                                    <label className="text-xs font-bold text-[#978175] uppercase ml-1">Kart Numarası</label>
-                                    <input type="text" value={cardDetails.number} className={inputStyle}
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-bold text-brand-text/40 uppercase ml-1 tracking-widest">Kart Numarası</label>
+                                    <input type="text" value={cardDetails.number} className={`${inputStyle} tracking-[0.3em] font-mono`}
                                         onChange={(e) => setCardDetails({ ...cardDetails, number: e.target.value.replace(/\D/g, "").slice(0, 16) })} />
                                 </div>
-                                <div className="grid grid-cols-3 gap-5">
-                                    <div className="space-y-1">
-                                        <label className="text-[10px] font-bold text-[#978175] uppercase ml-1">Ay</label>
+                                <div className="grid grid-cols-3 gap-6">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-bold text-brand-text/40 uppercase ml-1 tracking-widest">Ay</label>
                                         <select className={inputStyle} value={cardDetails.month} onChange={(e) => setCardDetails({ ...cardDetails, month: e.target.value })}>
                                             <option value="">Seç</option>
                                             {months.map(m => <option key={m} value={m}>{m.toString().padStart(2, '0')}</option>)}
                                         </select>
                                     </div>
-                                    <div className="space-y-1">
-                                        <label className="text-[10px] font-bold text-[#978175] uppercase ml-1">Yıl</label>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-bold text-brand-text/40 uppercase ml-1 tracking-widest">Yıl</label>
                                         <select className={inputStyle} value={cardDetails.year} onChange={(e) => setCardDetails({ ...cardDetails, year: e.target.value })}>
                                             <option value="">Seç</option>
                                             {years.map(y => <option key={y} value={y}>{y}</option>)}
                                         </select>
                                     </div>
-                                    <div className="space-y-1">
-                                        <label className="text-[10px] font-bold text-[#978175] uppercase ml-1">CVV</label>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-bold text-brand-text/40 uppercase ml-1 tracking-widest">CVV</label>
                                         <input type="text" value={cardDetails.cvv} className={inputStyle}
                                             onChange={(e) => setCardDetails({ ...cardDetails, cvv: e.target.value.replace(/\D/g, "").slice(0, 3) })} />
                                     </div>
