@@ -22,15 +22,14 @@ const allowedOrigins = [
   process.env.CLIENT_URL
 ].filter(Boolean);
 
+// server.js içindeki cors bölümünü bu şekilde güncelleyin
 app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("CORS hatası: " + origin));
-    }
-  },
-  credentials: true
+  origin: [
+    "http://localhost:5173",
+    "https://esnaf.apps.srv.aykutdurgut.com.tr"
+  ],
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
 }));
 
 app.use(express.json());
@@ -40,8 +39,9 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: false,
+    secure: true, // Sadece HTTPS üzerinden gönderilir
     httpOnly: true,
+    sameSite: "none", // Cross-site isteklerde çerez iletimi için gereklidir
     maxAge: 1000 * 60 * 60 * 24
   }
 }));
