@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* 1. TAILWIND V4 TEMA DEĞİŞKENLERİNİ TANIMLA */
+/* 1. TAILWIND V4 TEMA DEĞİŞKENLERİ */
 @theme {
   --color-brand-bg: var(--bg-color);
   --color-brand-card: var(--card-color);
@@ -8,43 +8,65 @@
   --color-brand-accent: var(--accent-color);
 }
 
-/* 2. TEMALARA GÖRE RENK DEĞERLERİNİ ATAMA */
+/* 2. MÜŞTERİ TEMA TANIMLAMALARI (SaaS) */
 
-/* Varsayılan Bej Tema */
+/* Klasik Bej Tema (Varsayılan) */
 :root {
-  --bg-color: #f8f5ea;
-  --card-color: #ffffff;
-  --text-color: #1a1a1a;
-  --accent-color: #5d4037; /* Kahverengi */
+  --bg-color: #f8f5ea;      /* Sayfa dışı */
+  --card-color: #ffffff;    /* Ürün paneli içi */
+  --text-color: #1a1a1a;    /* Ana yazı */
+  --accent-color: #5d4037;  /* Kahverengi tonu */
 }
 
-/* Koyu Tema (.dark sınıfı tetikler) */
+/* Gece Modu (Dark) */
 .dark {
-  --bg-color: #121212;
-  --card-color: #1d1d1d;
-  --text-color: #f3f4f6;
-  --accent-color: #fbbf24; /* Sarı/Amber */
+  --bg-color: #121212;      /* Kapkaranlık dış alan */
+  --card-color: #1d1d1d;    /* Koyu gri panel */
+  --text-color: #f3f4f6;    /* Beyazımsı yazı */
+  --accent-color: #fbbf24;  /* Amber vurgu rengi */
 }
 
-/* Okyanus Teması (data-theme özniteliği tetikler) */
+/* Okyanus Teması */
 [data-theme='ocean'] {
-  --bg-color: #87CEFA;
-  --card-color: #ffffff;
-  --text-color: #0c4a6e;
-  --accent-color: #0284c7; /* Mavi */
+  --bg-color: #0f172a;      /* Çok koyu lacivert dış */
+  --card-color: #1e293b;    /* Koyu mavi panel */
+  --text-color: #f1f5f9;    /* Açık mavi/beyaz yazı */
+  --accent-color: #38bdf8;  /* Parlak gökyüzü mavisi */
 }
 
-/* 3. TEMEL STİLLER (BODY VE YAZI TİPİ) */
+/* 3. TEMEL STİLLER VE RESETLER */
 @layer base {
   * {
+    /* Tüm sitedeki renk değişimlerini 500ms animasyona bağlar */
     @apply transition-colors duration-500 ease-in-out;
   }
   
   html {
     font-family: 'Roboto', sans-serif;
+    /* Kaydırma çubuğunun arka planla uyumlu olması için */
+    color-scheme: light dark;
   }
   
   body {
-    @apply bg-brand-bg text-brand-text;
+    @apply bg-brand-bg text-brand-text m-0 p-0 min-h-screen;
+    /* Iframe şeffaflığını desteklemek için arka planı zorunlu kılar */
+    background-color: var(--bg-color) !important;
+  }
+
+  /* Iframe'lerin varsayılan arka planını temizler */
+  iframe {
+    background-color: transparent !important;
+    color-scheme: normal;
+  }
+}
+
+/* 4. EKSTRA YARDIMCI SINIFLAR (İhtiyaç duyarsan) */
+@layer components {
+  .card-shadow {
+    box-shadow: 0 10px 50px -12px rgba(0, 0, 0, 0.1);
+  }
+  
+  .dark .card-shadow {
+    box-shadow: 0 10px 50px -12px rgba(0, 0, 0, 0.5);
   }
 }

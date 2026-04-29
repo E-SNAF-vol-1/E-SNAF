@@ -1,29 +1,43 @@
 <!doctype html>
-<html lang="tr">
+<html lang="tr" style="background-color: transparent !important;">
 
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/svg+xml" href="/vite.svg" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>E-SNAF</title>
-  <meta name="description"
-    content="E-SNAF, esnaf ve sanatkarların dijitalleşme sürecini destekleyen bir platformdur. Esnaf ve sanatkarların işlerini kolaylaştırmak, dijital araçlarla tanışmalarını sağlamak ve rekabet güçlerini artırmak amacıyla çeşitli hizmetler sunar." />
+  <meta name="description" content="E-SNAF, esnaf ve sanatkarların dijitalleşme sürecini destekleyen bir platformdur." />
 
-  <!-- Basic Icons -->
-  <link href="https://cdn.boxicons.com/3.0.8/fonts/basic/boxicons.min.css" rel="stylesheet">
-  <!-- Filled Icons -->
-  <link href="https://cdn.boxicons.com/3.0.8/fonts/filled/boxicons-filled.min.css" rel="stylesheet">
-  <!-- Brand Icons -->
-  <link href="https://cdn.boxicons.com/3.0.8/fonts/brands/boxicons-brands.min.css" rel="stylesheet">
-
+  <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 
+  <style>
+    /* BOZULMAYI ÖNLEYEN KRİTİK STİLLER:
+       Sadece body'yi değil, html etiketini de şeffaf yapıyoruz.
+       Ayrıca margin ve padding sıfırlayarak kaymaları önlüyoruz.
+    */
+    html, body {
+      margin: 0 !important;
+      padding: 0 !important;
+      background-color: transparent !important; /* Arka planı tamamen yok eder */
+      background-image: none !important;
+      height: 100%;
+      width: 100%;
+      overflow-x: hidden; /* Sağa sola kaymayı engeller */
+    }
+
+    /* Angular'ın ana kapsayıcısını şeffaf tut */
+    app-root {
+      background-color: transparent !important;
+      display: block;
+    }
+  </style>
 </head>
 
-<body>
-  <div id="root"></div>
+<body style="background-color: transparent !important;">
+  <div id="root"></div> <app-root></app-root>
   <script type="module" src="/src/main.jsx"></script>
 </body>
 
