@@ -7,7 +7,8 @@ const api = axios.create({
     baseURL: "https://esnaf.apps.srv.aykutdurgut.com.tr/api",
     headers: {
         "Content-Type": "application/json"
-    }
+    },
+    withCredentials: true
 });
 
 const SepetContext = createContext();

@@ -14,6 +14,7 @@ const weatherRoutes = require("./routes/weatherRoutes");
 const pool = require("./db");
 
 const app = express();
+
 console.log("weatherRoutes yüklendi");
 
 const allowedOrigins = [
