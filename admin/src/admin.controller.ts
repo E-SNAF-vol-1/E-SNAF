@@ -605,7 +605,7 @@ export class AdminController {
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Admin Dashboard</title>
+        <title>Admin Paneli</title>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>${CSS_STYLES}</style>
@@ -613,27 +613,8 @@ export class AdminController {
       <body>
         <div class="container">
           <div class="header">
-            <h1>📊 Admin Dashboard</h1>
+            <h1>📊 Admin Paneli</h1>
             <a href="/Admin" class="logout">Çıkış Yap</a>
-          </div>
-          
-          <div class="dashboard">
-            <div class="stat-card">
-              <h3>${stats.totalProducts}</h3>
-              <p>Toplam Ürün</p>
-            </div>
-            <div class="stat-card">
-              <h3>${stats.totalValue.toFixed(0).replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',')}</h3>
-              <p>Toplam Değer (₺)</p>
-            </div>
-            <div class="stat-card">
-              <h3>${stats.lowStockProducts}</h3>
-              <p>Düşük Stok (&lt;10)</p>
-            </div>
-            <div class="stat-card">
-              <h3>${allUsers.length}</h3>
-              <p>Toplam Müşteri</p>
-            </div>
           </div>
           
           <div class="tabs">
@@ -739,12 +720,29 @@ export class AdminController {
           
           <div id="stock" class="tab-content">
             <h2>📊 Stok Takibi</h2>
-            <p class="empty">🚀 Bu özellik yakında aktif olacaktır.</p>
+            <div id="stock-content"></div>
           </div>
           
           <div id="statistics" class="tab-content">
             <h2>📈 İstatistik</h2>
-            <p class="empty">🚀 Bu özellik yakında aktif olacaktır.</p>
+            <div class="dashboard">
+              <div class="stat-card">
+                <h3>${stats.totalProducts}</h3>
+                <p>Toplam Ürün</p>
+              </div>
+              <div class="stat-card">
+                <h3>${stats.totalValue.toFixed(0).replace(/\\B(?=(\\d{3})+(?!\\d))/g, ',')}</h3>
+                <p>Toplam Değer (₺)</p>
+              </div>
+              <div class="stat-card">
+                <h3>${stats.lowStockProducts}</h3>
+                <p>Düşük Stok (&lt;10)</p>
+              </div>
+              <div class="stat-card">
+                <h3>${allUsers.length}</h3>
+                <p>Toplam Müşteri</p>
+              </div>
+            </div>
           </div>
 
           <div id="mesajlar" class="tab-content">
@@ -769,12 +767,131 @@ export class AdminController {
             if (tabName === 'orders') {
               showSiparisler();
             }
+            if (tabName === 'stock') {
+              showStokTakibi();
+            }
             if (tabName === 'mesajlar') {
               showMesajlar();
             }
             if (tabName === 'musteri-sikayetleri') {
               showMusteriMesajlari();
             }
+          }
+
+          bindRichEditor('form[action="/Admin/create-product"]', 'add-description-editor', 'add-description-input');
+          bindMultiImagePicker('images', 'image-preview');
+          
+          const productsData = ${JSON.stringify(products)};
+
+          async function showSiparisler() {
+            const content = document.getElementById('main-content');
+            content.innerHTML = '<div class="card"><h2 style="margin-bottom:20px;"><div style="overflow-x:auto;"><table style="width:100%; border-collapse: collapse;"><thead><tr style="background: #f8f9fa;"><th style="padding:12px; border:1px solid #ddd;">No</th><th style="padding:12px; border:1px solid #ddd;">Müşteri / Misafir</th><th style="padding:12px; border:1px solid #ddd;">Tutar</th><th style="padding:12px; border:1px solid #ddd;">Durum</th></tr></thead><tbody id="siparis-list-body"><tr><td colspan="4" style="text-align:center; padding:20px;">Yükleniyor...</td></tr></tbody></table></div></div>';
+            try {
+              const res = await fetch('/siparis/liste');
+              if (!res.ok) throw new Error('Sipariş verisi çekilemedi');
+              const data = await res.json();
+              const tbody = document.getElementById('siparis-list-body');
+              if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:20px;">Henüz sipariş yok.</td></tr>';
+                return;
+              }
+              tbody.innerHTML = data.map(s => {
+                let isim = "Kayıtlı Üye";
+                if (s.notlar && s.notlar.startsWith('Misafir:')) {
+                  const parts = s.notlar.split(' - ');
+                  if (parts.length >= 1) {
+                    isim = parts[0].replace('Misafir: ', '');
+                  }
+                } else if (s.ad && s.soyad) {
+                  isim = s.ad + " " + s.soyad;
+                }
+                return '<tr>' +
+                  '<td style="padding:12px; border:1px solid #ddd;">#' + s.id + '</td>' +
+                  '<td style="padding:12px; border:1px solid #ddd;">' + isim + '</td>' +
+                  '<td style="padding:12px; border:1px solid #ddd;">' + s.toplam_tutar + ' TL</td>' +
+                  '<td style="padding:12px; border:1px solid #ddd;">' +
+                    '<select id="status-' + s.id + '" style="padding:5px; border-radius:4px; border:1px solid #ccc;">' +
+                      '<option value="Beklemede" ' + (s.durum === 'Beklemede' ? 'selected' : '') + '>Beklemede</option>' +
+                      '<option value="Hazırlanıyor" ' + (s.durum === 'Hazırlanıyor' ? 'selected' : '') + '>Hazırlanıyor</option>' +
+                      '<option value="Kargoya Verildi" ' + (s.durum === 'Kargoya Verildi' ? 'selected' : '') + '>Kargoya Verildi</option>' +
+                      '<option value="Tamamlandı" ' + (s.durum === 'Tamamlandı' ? 'selected' : '') + '>Tamamlandı</option>' +
+                      '<option value="İptal Edildi" ' + (s.durum === 'İptal Edildi' ? 'selected' : '') + '>İptal Edildi</option>' +
+                    '</select>' +
+                    '<button onclick="updateOrderStatus(' + s.id + ')" style="margin-left:5px; padding:5px 10px; background:#764ba2; color:white; border:none; border-radius:4px; cursor:pointer;">Güncelle</button>' +
+                  '</td>' +
+                '</tr>';
+              }).join('');
+            } catch (err) {
+              document.getElementById('siparis-list-body').innerHTML = '<tr><td colspan="4" style="text-align:center; color:red; padding:20px;">Veri çekilemedi!</td></tr>';
+            }
+          }
+
+          async function updateOrderStatus(orderId) {
+            const newStatus = document.getElementById('status-' + orderId).value;
+            try {
+              const response = await fetch('/siparis/guncelle/' + orderId, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ durum: newStatus })
+              });
+              if (response.ok) {
+                alert('Sipariş durumu başarıyla güncellendi!');
+                showSiparisler();
+              } else {
+                alert('Güncelleme sırasında bir hata oluştu.');
+              }
+            } catch (err) {
+              console.error('Hata:', err);
+              alert('Sunucuya bağlanılamadı.');
+            }
+          }
+
+          function showStokTakibi() {
+            const content = document.getElementById('stock-content');
+            
+            // Düşük stok ürünlerini filtrele (stok < 10)
+            const lowStockProducts = productsData.filter(p => p.stok_adedi < 10);
+            
+            if (lowStockProducts.length === 0) {
+              content.innerHTML = '<p class="empty">✅ Düşük stok ürün yok - Tüm ürünler yeterli miktarda stokta!</p>';
+              return;
+            }
+            
+            let html = '<h3 style="margin-bottom: 20px; color: #e74c3c;">⚠️ Düşük Stok Ürünleri (' + lowStockProducts.length + ')</h3>';
+            html += '<table><thead><tr>';
+            html += '<th>Ürün Adı</th>';
+            html += '<th>Mevcut Stok</th>';
+            html += '<th>Kritik Seviye</th>';
+            html += '<th>Durum</th>';
+            html += '<th>İşlem</th>';
+            html += '</tr></thead><tbody>';
+            
+            lowStockProducts.forEach(product => {
+              let statusColor = '#f39c12';
+              let statusText = '⚠️ Dikkat Gerekli';
+              if (product.stok_adedi === 0) {
+                statusColor = '#e74c3c';
+                statusText = '🔴 Stok Yok!';
+              } else if (product.stok_adedi <= 3) {
+                statusColor = '#e67e22';
+                statusText = '🔴 Kritik Stok';
+              }
+              
+              html += '<tr style="background: ' + (product.stok_adedi === 0 ? '#ffebee' : '#fff3e0') + '">';
+              html += '<td style="padding: 12px; border-bottom: 1px solid #e0e0e0;">' + product.urun_adi + '</td>';
+              html += '<td style="padding: 12px; border-bottom: 1px solid #e0e0e0; font-weight: bold; color: ' + statusColor + ';">' + product.stok_adedi + ' Adet</td>';
+              html += '<td style="padding: 12px; border-bottom: 1px solid #e0e0e0;">< 10 Adet</td>';
+              html += '<td style="padding: 12px; border-bottom: 1px solid #e0e0e0; color: ' + statusColor + '; font-weight: bold;">' + statusText + '</td>';
+              html += '<td style="padding: 12px; border-bottom: 1px solid #e0e0e0;">';
+              html += '<a href="/Admin/edit-product/' + product.id + '" class="btn btn-edit">Düzenle</a>';
+              html += '</td>';
+              html += '</tr>';
+            });
+            
+            html += '</tbody></table>';
+            content.innerHTML = html;
           }
 
           function syncEditor(editorId, inputId) {
@@ -918,74 +1035,6 @@ export class AdminController {
           }
 
           
-
-          bindRichEditor('form[action="/Admin/create-product"]', 'add-description-editor', 'add-description-input');
-          bindMultiImagePicker('images', 'image-preview');
-          async function showSiparisler() {
-            const content = document.getElementById('main-content');
-            content.innerHTML = '<div class="card"><h2 style="margin-bottom:20px;"><div style="overflow-x:auto;"><table style="width:100%; border-collapse: collapse;"><thead><tr style="background: #f8f9fa;"><th style="padding:12px; border:1px solid #ddd;">No</th><th style="padding:12px; border:1px solid #ddd;">Müşteri / Misafir</th><th style="padding:12px; border:1px solid #ddd;">Tutar</th><th style="padding:12px; border:1px solid #ddd;">Durum</th></tr></thead><tbody id="siparis-list-body"><tr><td colspan="4" style="text-align:center; padding:20px;">Yükleniyor...</td></tr></tbody></table></div></div>';
-            try {
-              const res = await fetch('/siparis/liste');
-              if (!res.ok) throw new Error('Sipariş verisi çekilemedi');
-              const data = await res.json();
-              const tbody = document.getElementById('siparis-list-body');
-              if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:20px;">Henüz sipariş yok.</td></tr>';
-                return;
-              }
-              tbody.innerHTML = data.map(s => {
-                let isim = "Kayıtlı Üye";
-                if (s.notlar && s.notlar.startsWith('Misafir:')) {
-                  const parts = s.notlar.split(' - ');
-                  if (parts.length >= 1) {
-                    isim = parts[0].replace('Misafir: ', '');
-                  }
-                } else if (s.ad && s.soyad) {
-                  isim = s.ad + " " + s.soyad;
-                }
-                return '<tr>' +
-                  '<td style="padding:12px; border:1px solid #ddd;">#' + s.id + '</td>' +
-                  '<td style="padding:12px; border:1px solid #ddd;">' + isim + '</td>' +
-                  '<td style="padding:12px; border:1px solid #ddd;">' + s.toplam_tutar + ' TL</td>' +
-                  '<td style="padding:12px; border:1px solid #ddd;">' +
-                    '<select id="status-' + s.id + '" style="padding:5px; border-radius:4px; border:1px solid #ccc;">' +
-                      '<option value="Beklemede" ' + (s.durum === 'Beklemede' ? 'selected' : '') + '>Beklemede</option>' +
-                      '<option value="Hazırlanıyor" ' + (s.durum === 'Hazırlanıyor' ? 'selected' : '') + '>Hazırlanıyor</option>' +
-                      '<option value="Kargoya Verildi" ' + (s.durum === 'Kargoya Verildi' ? 'selected' : '') + '>Kargoya Verildi</option>' +
-                      '<option value="Tamamlandı" ' + (s.durum === 'Tamamlandı' ? 'selected' : '') + '>Tamamlandı</option>' +
-                      '<option value="İptal Edildi" ' + (s.durum === 'İptal Edildi' ? 'selected' : '') + '>İptal Edildi</option>' +
-                    '</select>' +
-                    '<button onclick="updateOrderStatus(' + s.id + ')" style="margin-left:5px; padding:5px 10px; background:#764ba2; color:white; border:none; border-radius:4px; cursor:pointer;">Güncelle</button>' +
-                  '</td>' +
-                '</tr>';
-              }).join('');
-            } catch (err) {
-              document.getElementById('siparis-list-body').innerHTML = '<tr><td colspan="4" style="text-align:center; color:red; padding:20px;">Veri çekilemedi!</td></tr>';
-            }
-          }
-
-          async function updateOrderStatus(orderId) {
-            const newStatus = document.getElementById('status-' + orderId).value;
-            try {
-              const response = await fetch('/siparis/guncelle/' + orderId, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ durum: newStatus })
-              });
-              if (response.ok) {
-                alert('Sipariş durumu başarıyla güncellendi!');
-                showSiparisler();
-              } else {
-                alert('Güncelleme sırasında bir hata oluştu.');
-              }
-            } catch (err) {
-              console.error('Hata:', err);
-              alert('Sunucuya bağlanılamadı.');
-            }
-          }
-
           async function showMesajlar() {
             const content = document.getElementById('mesaj-main-content');
             content.innerHTML = \`
