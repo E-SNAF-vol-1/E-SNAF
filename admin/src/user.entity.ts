@@ -16,7 +16,8 @@ export class User {
   @Column({ nullable: true })
   soyad: string;
 
-  @Column({ unique: true })
+  // Email zorunluluğu için nullable: true kaldırıldı
+  @Column({ unique: true }) 
   email: string;
 
   @Column()
@@ -27,4 +28,14 @@ export class User {
 
   @CreateDateColumn()
   kayit_tarihi: Date;
+
+  // Veritabanındaki "son_mesaj" kolonuyla eşleşmesi şart:
+  @Column({ type: 'text', nullable: true })
+  son_mesaj: string; 
+
+  @Column({ default: 'Okunmadı' })
+  mesaj_durumu: string;
+
+  @Column({ type: 'timestamp', nullable: true })
+  mesaj_tarihi: Date;
 }
