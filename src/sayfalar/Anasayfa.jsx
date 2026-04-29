@@ -1,18 +1,14 @@
+import React from 'react';
 import UstBilgiBar from "../components/UstBilgiBar";
-import AngularUrunEmbed from "../components/AngularUrunEmbed";
 
 export default function Anasayfa() {
   return (
-<<<<<<< HEAD
     /* bg-brand-bg: Tüm sayfanın ana zemini. Artık her şey bu rengin üzerinde süzülecek. */
     <div className="bg-brand-bg min-h-screen transition-all duration-700 flex flex-col">
       
       <div className="max-w-7xl mx-auto w-full px-4 pt-6 flex-grow">
         
-        {/* BURADAKİ DEĞİŞİKLİK: 
-            'bg-brand-card', 'shadow-2xl' ve 'rounded' sınıflarını kaldırdık.
-            Böylece ürünlerin arkasındaki o büyük beyaz kutu tamamen yok oldu.
-        */}
+        {/* Ürünlerin arkasındaki büyük beyaz kutu kaldırıldı, zemin şeffaf. */}
         <div className="bg-transparent transition-all duration-700 flex flex-col">
           
           {/* Üstteki Hava Durumu Barı - Zemine göre otomatik renk alır */}
@@ -37,13 +33,6 @@ export default function Anasayfa() {
         <div className="mt-8 mb-8 text-center text-brand-text/40 text-sm italic font-medium">
           © 2026 E-SNAF Altyapısı ile Güçlendirilmiştir.
         </div>
-=======
-    <div className="bg-brand-bg min-h-screen transition-colors duration-500">
-      <div className="max-w-7xl mx-auto px-4 pt-6">
-        <UstBilgiBar />
-
-        <AngularUrunEmbed />
->>>>>>> bcd6e116b2b4e103d21673ee5578e0b7576a6a6f
       </div>
     </div>
   );
