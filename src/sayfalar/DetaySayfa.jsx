@@ -1,30 +1,33 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useParams, useNavigate } from 'react-router-dom'; // useNavigate eklendi
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import DetayKarti from '../components/DetayKarti';
+import { useAuth } from '../context/AuthContext'; // GÜNCELLEME: useAuth eklendi
 
 const DetaySayfa = () => {
   const { id } = useParams();
-  const navigate = useNavigate(); // Yönlendirme fonksiyonu
+  const navigate = useNavigate();
+  const { api } = useAuth(); // GÜNCELLEME: Güvenli api nesnesini buradan çekiyoruz
   const [urun, setUrun] = useState(null);
   const [yukleniyor, setYukleniyor] = useState(true);
   const [hata, setHata] = useState(null);
 
   useEffect(() => {
     setYukleniyor(true);
-    fetch(`https://esnaf.apps.srv.aykutdurgut.com.tr/api/products/${id}`)
+
+    // GÜNCELLEME: fetch yerine api.get kullanıyoruz. 
+    // Bu sayede withCredentials: true ayarı otomatik devreye girer[cite: 1].
+    api.get(`/products/${id}`)
       .then(res => {
-        if (!res.ok) throw new Error(`Sunucu hatası: ${res.status}`);
-        return res.json();
-      })
-      .then(data => {
-        setUrun(data);
+        setUrun(res.data);
         setYukleniyor(false);
       })
       .catch(err => {
-        setHata(err.message);
+        // Hata mesajını daha güvenli çekiyoruz.
+        const mesaj = err.response?.data?.message || err.message;
+        setHata(mesaj);
         setYukleniyor(false);
       });
-  }, [id]);
+  }, [id, api]); // api dependency listesine eklendi[cite: 1]
 
   const MesajEkrani = ({ cocuk }) => (
     <div className="min-h-screen bg-brand-bg flex items-center justify-center p-10 transition-colors duration-500">
@@ -41,9 +44,9 @@ const DetaySayfa = () => {
   return (
     <div className="min-h-screen bg-brand-bg transition-colors duration-500 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
-        
-        {/* YENİ: ANASAYFAYA DÖN BUTONU */}
-        <button 
+
+        {/* ANASAYFAYA DÖN BUTONU */}
+        <button
           onClick={() => navigate("/")}
           className="group flex items-center gap-3 mb-6 text-brand-text/50 hover:text-brand-accent transition-all duration-300 font-bold text-xs uppercase tracking-[0.2em] px-2"
         >
@@ -53,12 +56,12 @@ const DetaySayfa = () => {
           <span>Anasayfaya Dön</span>
         </button>
 
-        {/* Breadcrumb - Mevcut yapın korunuyor */}
+        {/* Breadcrumb */}
         <div className="mb-8 text-sm font-medium text-brand-text/30 px-2 flex items-center gap-2">
           <Link to="/" className="hover:text-brand-accent transition-colors italic">Ana Sayfa</Link>
           <span className="opacity-30">/</span>
-          <Link 
-            to={`/arama?q=${encodeURIComponent(urun.kategori || '')}`} 
+          <Link
+            to={`/arama?q=${encodeURIComponent(urun.kategori || '')}`}
             className="hover:text-brand-accent transition-colors italic"
           >
             {urun.kategori || 'Ürünler'}
