@@ -601,4 +601,25 @@ export class ProductService {
       mesaj_durumu: yeniDurum,
     });
   }
+  async getOrderDetails(orderId: number) {
+    return await this.dataSource.query(`
+      SELECT 
+        s.id as siparis_id,
+        s.toplam_fiyat,
+        s.siparis_tarihi,
+        s.durum,
+        m.ad,
+        m.soyad,
+        m.email,
+        m.telefon,
+        sd.adet,
+        sd.fiyat as birim_fiyat,
+        u.urun_adi
+      FROM siparis s
+      JOIN musteri m ON s.musteri_id = m.id
+      JOIN siparis_detay sd ON s.id = sd.siparis_id
+      JOIN urun u ON sd.urun_id = u.id
+      WHERE s.id = $1
+    `, [Number(orderId)]);
+  }
 }

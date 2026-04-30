@@ -3,9 +3,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import { Controller, Get, Post, Body, Res, Param, UploadedFiles, UseInterceptors } from '@nestjs/common';
+import { Controller, Get, Post, Body, Res, Param, UploadedFiles, UseInterceptors, ParseIntPipe } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { User } from './user.entity';
 import { Admin } from './admin.entity';
 import { Product } from './product.entity';
@@ -463,6 +463,7 @@ export class AdminController {
     @InjectRepository(AltKategori)
     private altKategoriRepo: Repository<AltKategori>,
     private productService: ProductService,
+    private dataSource: DataSource,
   ) {}
 
   @Get()
@@ -624,7 +625,6 @@ export class AdminController {
             <button class="tab-btn" onclick="switchTab('orders')">📋 Sipariş Takibi</button>
             <button class="tab-btn" onclick="switchTab('stock')">📊 Stok Takibi</button>
             <button class="tab-btn" onclick="switchTab('statistics')">📈 İstatistik</button>
-            <button class="tab-btn" onclick="switchTab('mesajlar')">✉️ Mesajlar / Şikayetler</button>
             <button class="tab-btn" onclick="switchTab('musteri-sikayetleri')">✉️ Müşteri Şikayetleri</button>
             
           </div>
@@ -745,10 +745,6 @@ export class AdminController {
             </div>
           </div>
 
-          <div id="mesajlar" class="tab-content">
-            <div id="mesaj-main-content"></div>
-          </div>
-
           <div id="musteri-sikayetleri" class="tab-content">
             <div id="musteri-sikayetleri-content"></div>
           </div>
@@ -770,9 +766,6 @@ export class AdminController {
             if (tabName === 'stock') {
               showStokTakibi();
             }
-            if (tabName === 'mesajlar') {
-              showMesajlar();
-            }
             if (tabName === 'musteri-sikayetleri') {
               showMusteriMesajlari();
             }
@@ -785,14 +778,14 @@ export class AdminController {
 
           async function showSiparisler() {
             const content = document.getElementById('main-content');
-            content.innerHTML = '<div class="card"><h2 style="margin-bottom:20px;"><div style="overflow-x:auto;"><table style="width:100%; border-collapse: collapse;"><thead><tr style="background: #f8f9fa;"><th style="padding:12px; border:1px solid #ddd;">No</th><th style="padding:12px; border:1px solid #ddd;">Müşteri / Misafir</th><th style="padding:12px; border:1px solid #ddd;">Tutar</th><th style="padding:12px; border:1px solid #ddd;">Durum</th></tr></thead><tbody id="siparis-list-body"><tr><td colspan="4" style="text-align:center; padding:20px;">Yükleniyor...</td></tr></tbody></table></div></div>';
+            content.innerHTML = '<div class="card"><h2 style="margin-bottom:20px;"><div style="overflow-x:auto;"><table style="width:100%; border-collapse: collapse;"><thead><tr style="background: #f8f9fa;"><th style="padding:12px; border:1px solid #ddd;">No</th><th style="padding:12px; border:1px solid #ddd;">Müşteri / Misafir</th><th style="padding:12px; border:1px solid #ddd;">Tutar</th><th style="padding:12px; border:1px solid #ddd;">Durum</th><th style="padding:12px; border:1px solid #ddd;">Detay</th></tr></thead><tbody id="siparis-list-body"><tr><td colspan="5" style="text-align:center; padding:20px;">Yükleniyor...</td></tr></tbody></table></div></div>';
             try {
               const res = await fetch('/siparis/liste');
               if (!res.ok) throw new Error('Sipariş verisi çekilemedi');
               const data = await res.json();
               const tbody = document.getElementById('siparis-list-body');
               if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:20px;">Henüz sipariş yok.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px;">Henüz sipariş yok.</td></tr>';
                 return;
               }
               tbody.innerHTML = data.map(s => {
@@ -819,10 +812,13 @@ export class AdminController {
                     '</select>' +
                     '<button onclick="updateOrderStatus(' + s.id + ')" style="margin-left:5px; padding:5px 10px; background:#764ba2; color:white; border:none; border-radius:4px; cursor:pointer;">Güncelle</button>' +
                   '</td>' +
+                  '<td style="padding:12px; border:1px solid #ddd;">' +
+                    '<button onclick="showOrderDetails(' + s.id + ')" style="padding:5px 10px; background:#27ae60; color:white; border:none; border-radius:4px; cursor:pointer;">🔍 Detay</button>' +
+                  '</td>' +
                 '</tr>';
               }).join('');
             } catch (err) {
-              document.getElementById('siparis-list-body').innerHTML = '<tr><td colspan="4" style="text-align:center; color:red; padding:20px;">Veri çekilemedi!</td></tr>';
+              document.getElementById('siparis-list-body').innerHTML = '<tr><td colspan="5" style="text-align:center; color:red; padding:20px;">Veri çekilemedi!</td></tr>';
             }
           }
 
@@ -846,6 +842,70 @@ export class AdminController {
               console.error('Hata:', err);
               alert('Sunucuya bağlanılamadı.');
             }
+          }
+
+          async function showSiparisTakibi() {
+            const content = document.getElementById('main-content');
+            content.innerHTML = \`<h2>📦 Sipariş Takibi</h2><div id="orders-list">Yükleniyor...</div>\`;
+            try {
+              const res = await fetch('/admin/orders');
+              const orders = await res.json();
+
+              let html = '<table style="width:100%; border-collapse:collapse;">';
+              html += '<tr style="background:#764ba2; color:white;"><th>ID</th><th>Müşteri</th><th>Toplam</th><th>İşlem</th></tr>';
+
+              orders.forEach(o => {
+                html += \`<tr>
+                  <td style="border:1px solid #ddd; padding:8px;">\${o.id}</td>
+                  <td style="border:1px solid #ddd; padding:8px;">\${o.musteri_ad} \${o.musteri_soyad}</td>
+                  <td style="border:1px solid #ddd; padding:8px;">\${o.toplam_fiyat} ₺</td>
+                  <td style="border:1px solid #ddd; padding:8px;">
+                    <button onclick="getOrderDetail(\${o.id})" style="cursor:pointer;">Detay Gör</button>
+                  </td>
+                </tr>\`;
+              });
+
+              document.getElementById('orders-list').innerHTML = html + '</table>';
+            } catch (err) {
+              document.getElementById('orders-list').innerHTML = 'Siparişler yüklenemedi.';
+            }
+          }
+
+          async function getOrderDetail(id) {
+            try {
+              const res = await fetch(\`/admin/orders/\${id}\`);
+
+              if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.message || "Sunucu hatası");
+              }
+
+              const data = await res.json();
+              if (data.length === 0) return alert("Sipariş içeriği boş.");
+
+              renderOrderDetail(data);
+            } catch (err) {
+              console.error("Detay hatası:", err);
+              alert("Hata: " + err.message);
+            }
+          }
+
+          function renderOrderDetail(data) {
+            let detayHtml = \`<div class="card" style="margin-top:20px; padding:15px; border:1px solid #764ba2;">
+              <h3>Müşteri: \${data[0].ad} \${data[0].soyad}</h3>
+              <p>Email: \${data[0].email} | Tel: \${data[0].telefon}</p>
+              <hr>
+              <ul>\`;
+
+            data.forEach(item => {
+              detayHtml += \`<li>\${item.urun_adi} - \${item.adet} Adet (\${item.birim_fiyat} ₺)</li>\`;
+            });
+
+            detayHtml += \`</ul><p><strong>Genel Toplam: \${data[0].toplam_fiyat} ₺</strong></p></div>\`;
+
+            const detailDiv = document.createElement('div');
+            detailDiv.innerHTML = detayHtml;
+            document.getElementById('main-content').appendChild(detailDiv);
           }
 
           function showStokTakibi() {
@@ -1034,56 +1094,6 @@ export class AdminController {
             }
           }
 
-          
-          async function showMesajlar() {
-            const content = document.getElementById('mesaj-main-content');
-            content.innerHTML = \`
-              <div class="card" style="background:white; padding:20px; border-radius:8px; box-shadow:0 4px 6px rgba(0,0,0,0.1);">
-                <h2 style="margin-bottom:20px;">✉️ Gelen Mesajlar</h2>
-                <table style="width:100%; border-collapse: collapse;">
-                  <thead>
-                    <tr style="background: #f8f9fa;">
-                      <th style="padding:12px; border:1px solid #ddd;">Tarih</th>
-                      <th style="padding:12px; border:1px solid #ddd;">Ad Soyad</th>
-                      <th style="padding:12px; border:1px solid #ddd;">Konu</th>
-                      <th style="padding:12px; border:1px solid #ddd;">Durum</th>
-                      <th style="padding:12px; border:1px solid #ddd;">İşlem</th>
-                    </tr>
-                  </thead>
-                  <tbody id="mesaj-list-body">
-                    <tr><td colspan="5" style="text-align:center; padding:20px;">Yükleniyor...</td></tr>
-                  </tbody>
-                </table>
-              </div>
-            \`;
-
-            try {
-              const res = await fetch('/mesaj/liste');
-              const data = await res.json();
-              const tbody = document.getElementById('mesaj-list-body');
-
-              tbody.innerHTML = data.map(m => \`
-                <tr style="background: \${m.durum === 'Okunmadı' ? '#fff9db' : 'white'}">
-                  <td style="padding:12px; border:1px solid #ddd;">\${new Date(m.tarih).toLocaleDateString()}</td>
-                  <td style="padding:12px; border:1px solid #ddd;">\${m.ad_soyad}</td>
-                  <td style="padding:12px; border:1px solid #ddd;">\${m.konu}</td>
-                  <td style="padding:12px; border:1px solid #ddd;">\${m.durum}</td>
-                  <td style="padding:12px; border:1px solid #ddd;">
-                    <button onclick="mesajOku(\${m.id})" style="background:#764ba2; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">Oku</button>
-                  </td>
-                </tr>
-              \`).join('');
-            } catch (err) {
-              document.getElementById('mesaj-list-body').innerHTML = '<tr><td colspan="5" style="text-align:center; color:red;">Veri çekilemedi!</td></tr>';
-            }
-          }
-
-          async function mesajOku(id) {
-            const res = await fetch(\`/mesaj/detay/\${id}\`);
-            const m = await res.json();
-            alert(\`Gönderen: \${m.ad_soyad}\\nE-posta: \${m.eposta}\\nMesaj: \${m.mesaj_icerigi}\`);
-            showMesajlar();
-          }
 
           async function showMusteriMesajlari() {
             const content = document.getElementById('musteri-sikayetleri-content');
@@ -1141,6 +1151,60 @@ export class AdminController {
             } catch (err) {
               console.error("Hata Detayı:", err);
               tbody.innerHTML = '<tr><td colspan="5" style="color:red; text-align:center; padding:20px;">Hata: ' + err.message + '</td></tr>';
+            }
+          }
+
+          async function showOrderDetails(orderId) {
+            try {
+              const res = await fetch(\`/admin/orders/\${orderId}\`);
+              const details = await res.json();
+
+              if (details.length === 0) return;
+              const customer = details[0]; // Müşteri bilgileri her satırda aynıdır
+
+              const modalContent = \`
+                <div style="padding:20px; font-family: Arial, sans-serif;">
+                  <h3 style="border-bottom: 2px solid #764ba2; padding-bottom:10px;">📋 Sipariş Detayı (#\${orderId})</h3>
+                  <button onclick="showSiparisler()" style="margin-top:10px; padding:6px 14px; background:#667eea; color:white; border:none; border-radius:4px; cursor:pointer;">← Listeye Dön</button>
+
+                  <div style="display:flex; justify-content: space-between; margin-top:15px;">
+                    <div>
+                      <p><strong>Müşteri:</strong> \${customer.ad} \${customer.soyad}</p>
+                      <p><strong>Email:</strong> \${customer.email}</p>
+                      <p><strong>Telefon:</strong> \${customer.telefon}</p>
+                    </div>
+                    <div style="text-align:right;">
+                      <p><strong>Tarih:</strong> \${new Date(customer.siparis_tarihi).toLocaleString()}</p>
+                      <p><strong>Durum:</strong> <span style="color:blue;">\${customer.durum}</span></p>
+                    </div>
+                  </div>
+
+                  <table style="width:100%; border-collapse: collapse; margin-top:20px;">
+                    <thead>
+                      <tr style="background:#f8f9fa;">
+                        <th style="padding:10px; border:1px solid #ddd;">Ürün Adı</th>
+                        <th style="padding:10px; border:1px solid #ddd;">Adet</th>
+                        <th style="padding:10px; border:1px solid #ddd;">Birim Fiyat</th>
+                        <th style="padding:10px; border:1px solid #ddd;">Toplam</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      \${details.map(item => \`
+                        <tr>
+                          <td style="padding:10px; border:1px solid #ddd;">\${item.urun_adi}</td>
+                          <td style="padding:10px; border:1px solid #ddd; text-align:center;">\${item.adet}</td>
+                          <td style="padding:10px; border:1px solid #ddd; text-align:right;">\${item.birim_fiyat} ₺</td>
+                          <td style="padding:10px; border:1px solid #ddd; text-align:right;">\${item.adet * item.birim_fiyat} ₺</td>
+                        </tr>
+                      \`).join('')}
+                    </tbody>
+                  </table>
+                  <h4 style="text-align:right; margin-top:20px;">Genel Toplam: \${customer.toplam_fiyat} ₺</h4>
+                </div>
+              \`;
+              document.getElementById('main-content').innerHTML = modalContent;
+            } catch (err) {
+              alert("Sipariş detayları yüklenirken hata oluştu.");
             }
           }
 
@@ -1208,6 +1272,21 @@ export class AdminController {
   @Get('users')
   async getAllUsers() {
     return await this.userRepo.find();
+  }
+
+  @Get('orders')
+  async getAllOrders() {
+    return await this.dataSource.query(`
+      SELECT s.id, m.ad as musteri_ad, m.soyad as musteri_soyad, s.toplam_fiyat
+      FROM siparis s
+      JOIN musteri m ON s.musteri_id = m.id
+      ORDER BY s.id DESC
+    `);
+  }
+
+  @Get('orders/:id')
+  async getOrderDetail(@Param('id', ParseIntPipe) id: number) {
+    return await this.productService.getOrderDetails(id);
   }
 
   @Post('users/reply/:id')

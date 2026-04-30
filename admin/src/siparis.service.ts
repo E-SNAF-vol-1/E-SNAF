@@ -82,4 +82,29 @@ export class SiparisService {
       await queryRunner.release();
     }
   }
+  async getOrderDetails(orderId: number) {
+  // Sipariş tablosundan veriyi çekerken 'musteri' ve 'siparis_detay' ilişkilerini dahil ediyoruz
+  const order = await this.dataSource.query(`
+    SELECT 
+      s.id as siparis_id,
+      s.toplam_fiyat,
+      s.siparis_tarihi,
+      s.durum,
+      m.ad,
+      m.soyad,
+      m.email,
+      m.telefon,
+      sd.urun_id,
+      sd.adet,
+      sd.fiyat as birim_fiyat,
+      u.urun_adi
+    FROM siparis s
+    JOIN musteri m ON s.musteri_id = m.id
+    JOIN siparis_detay sd ON s.id = sd.siparis_id
+    JOIN urun u ON sd.urun_id = u.id
+    WHERE s.id = $1
+  `, [orderId]);
+
+  return order;
+}
 }
