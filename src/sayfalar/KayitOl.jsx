@@ -25,7 +25,7 @@ export default function KayitOl() {
     setIsLoading(true);
     try {
       // DÜZELTME: kayitVerisi yerine formData kullanıldı
-      const response = await axios.post('http://localhost:3000/api/auth/register', formData);
+      const response = await axios.post('https://esnaf.apps.srv.aykutdurgut.com.tr/api/auth/register', formData);
       alert("Hesabınız başarıyla oluşturuldu.");
       navigate("/giris-yap");
     } catch (error) {

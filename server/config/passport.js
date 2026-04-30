@@ -8,7 +8,7 @@ passport.use(
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
       // DÜZELTME: CALLBACK_URL yerine GOOGLE_CALLBACK_URL yapıldı
       callbackURL: process.env.GOOGLE_CALLBACK_URL, 
-      callbackURL: "http://localhost:3000/auth/google/callback"
+      callbackURL: "https://esnaf.apps.srv.aykutdurgut.com.tr/auth/google/callback"
     },
     async (accessToken, refreshToken, profile, done) => {
       return done(null, profile);
