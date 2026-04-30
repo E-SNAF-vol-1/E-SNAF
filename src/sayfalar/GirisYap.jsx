@@ -11,6 +11,13 @@ export default function GirisYap() {
   const navigate = useNavigate();
   const { girisYap } = useAuth();
 
+  // Ortam kontrolü için helper fonksiyon
+  const getApiUrl = () => {
+    return window.location.hostname === "localhost" 
+      ? "http://localhost:3000" 
+      : "https://esnaf.apps.srv.aykutdurgut.com.tr";
+  };
+
   const handleLogin = async (e) => {
     e.preventDefault();
     setIsLoading(true);
@@ -75,6 +82,12 @@ export default function GirisYap() {
       cursor: isLoading ? 'not-allowed' : 'pointer',
       boxShadow: '0 10px 20px rgba(93, 64, 55, 0.15)', marginTop: '8px'
     },
+    socialBtn: {
+      width: '100%', padding: '16px', borderRadius: '16px',
+      border: '1.5px solid #eee', backgroundColor: '#fff',
+      fontSize: '15px', fontWeight: '700', color: '#5d4037',
+      cursor: 'pointer', marginBottom: '12px', transition: '0.3s'
+    },
     forgotLink: {
       display: 'block', textAlign: 'right', color: '#a68b6d',
       fontSize: '13px', marginTop: '-10px', marginBottom: '25px',
@@ -99,7 +112,6 @@ export default function GirisYap() {
         </div>
 
         <form style={s.form} onSubmit={handleLogin}>
-          {/* Hata mesajı */}
           {hata && (
             <div style={s.hataKutu}>
               <span>⚠️</span>
@@ -152,6 +164,21 @@ export default function GirisYap() {
           <span style={s.dividerText}>veya</span>
           <div style={s.dividerLine}></div>
         </div>
+
+        {/* Sosyal Giriş Butonları */}
+        <button 
+          style={s.socialBtn}
+          onClick={() => window.location.href = `${getApiUrl()}/api/auth/google`}
+        >
+          Google ile Giriş Yap
+        </button>
+        
+        <button 
+          style={s.socialBtn}
+          onClick={() => window.location.href = `${getApiUrl()}/api/auth/facebook`}
+        >
+          Facebook ile Giriş Yap
+        </button>
 
         <div style={s.footer}>
           Hesabınız yok mu?

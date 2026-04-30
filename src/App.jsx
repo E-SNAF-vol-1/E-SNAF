@@ -1,4 +1,4 @@
-import { useEffect } from "react"; // ← useEffect ekledik
+import { useEffect } from "react";
 import { Routes, Route } from "react-router-dom";
 import AnaLayout from "./layout/AnaLayout";
 import Anasayfa from "./sayfalar/Anasayfa";
@@ -8,10 +8,14 @@ import CerezOnayi from './components/CerezOnayi';
 import AramaSonuclari from "./sayfalar/AramaSonuclari";
 import CerezPolitikasi from "./sayfalar/CerezPolitikasi";
 import Odeme from "./sayfalar/Odeme";
-import GirisYap from "./components/GirisYap";
-import KayitOl from "./components/KayitOl";
-import Hesabim from "./sayfalar/Hesabim"; 
+
+// Klasör yapına göre yolları düzelttik (./sayfalar/ altında oldukları görünüyor)
+import GirisYap from "./sayfalar/GirisYap";
+import KayitOl from "./sayfalar/KayitOl";
+import Hesabim from "./sayfalar/Hesabim";
 import Iletisim from "./sayfalar/Iletisim";
+import SifremiUnuttum from "./sayfalar/SifremiUnuttum";
+
 import { AuthProvider } from "./context/AuthContext";
 import TemaSecici from "./components/TemaSecici"; 
 import axios from "axios";
@@ -19,42 +23,35 @@ import axios from "axios";
 axios.defaults.withCredentials = true;
 
 function App() {
-  // --- MÜŞTERİ TEMA SEÇİMİ MANTIĞI ---
+  // --- TEMA UYGULAMA MANTIĞI ---
   useEffect(() => {
     const temaUygula = async () => {
       try {
-        // Mağaza ayarlarını getiren API (Arkadaşınla bu ucu netleştirin)
         const res = await axios.get("https://esnaf.apps.srv.aykutdurgut.com.tr/api/settings");
-        const seciliTema = res.data.active_theme; // 'dark', 'ocean' veya 'light'
+        const seciliTema = res.data.active_theme;
 
         const root = document.documentElement;
-        
-        // Temizlik: Mevcut sınıfları ve öznitelikleri kaldır
         root.classList.remove("dark");
         root.removeAttribute("data-theme");
 
-        // API'den gelen değere göre yeni temayı giydir
         if (seciliTema === "dark") {
           root.classList.add("dark");
         } else if (seciliTema === "ocean") {
           root.setAttribute("data-theme", "ocean");
         }
-        // light ise zaten CSS'deki bej köklere döner.
       } catch (err) {
         console.error("Tema yüklenirken hata oluştu:", err);
       }
     };
-
     temaUygula();
   }, []);
-  // ----------------------------------
 
   return (
     <AuthProvider>
       <AnaLayout className="App">
         <CerezOnayi />
-        {/* TemaSecici şimdilik duruyor, müşteriye teslim ederken buradan kaldırırsın */}
         <TemaSecici /> 
+        
         <Routes>
           <Route path="/" element={<Anasayfa />} />
           <Route path="/arama" element={<AramaSonuclari />} />
@@ -66,11 +63,7 @@ function App() {
           <Route path="/kayit-ol" element={<KayitOl />} />
           <Route path="/hesabim" element={<Hesabim />} />
           <Route path="/iletisim" element={<Iletisim />} />
-          <Route path="/sifremi-unuttum" element={
-            <div style={{ padding: "100px", textAlign: "center", backgroundColor: "#f8f5ea", minHeight: "100vh" }}>
-              Şifre Sıfırlama Sayfası Hazırlanıyor...
-            </div>
-          } />
+          <Route path="/sifremi-unuttum" element={<SifremiUnuttum />} />
         </Routes>
       </AnaLayout>
     </AuthProvider>
