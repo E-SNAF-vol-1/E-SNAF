@@ -6,16 +6,23 @@ passport.use(
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      // DÜZELTME: CALLBACK_URL yerine GOOGLE_CALLBACK_URL yapıldı
-      callbackURL: process.env.GOOGLE_CALLBACK_URL, 
-      callbackURL: "https://esnaf.apps.srv.aykutdurgut.com.tr/auth/google/callback"
+      // Sadece tek bir callbackURL bırakıyoruz.
+      callbackURL: process.env.GOOGLE_CALLBACK_URL || "https://esnaf.apps.srv.aykutdurgut.com.tr/auth/google/callback"
     },
     async (accessToken, refreshToken, profile, done) => {
+      // Burası kritik: Kullanıcıyı veritabanınızda (PostgreSQL) 
+      // aramalı veya yoksa kaydetmelisiniz.
       return done(null, profile);
     }
   )
 );
 
-// Kullanıcıyı session'a kaydetme (Giriş yaptıktan sonra hatırla)
-passport.serializeUser((user, done) => done(null, user));
-passport.deserializeUser((user, done) => done(null, user));
+// Serialize/Deserialize işlemleri session'ın temelidir.
+passport.serializeUser((user, done) => {
+  done(null, user);
+});
+
+passport.deserializeUser((user, done) => {
+  // Veritabanı ile senkronize çalışmak için ideal yer burasıdır.
+  done(null, user);
+});

@@ -19,13 +19,18 @@ export function AuthProvider({ children }) {
       try {
         const res = await api.get("/auth/me");
         setUser(res.data.user || null);
-      } catch {
-        setUser(null);
+      } catch (error) {
+        // Krtik nokta burası: İnternet giderse veya sunucu 500 verirse 
+        // kullanıcıyı hemen null yapmıyoruz, state korunuyor.[cite: 1]
+        if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+          setUser(null);
+        }
       } finally {
         setYukleniyor(false);
       }
     };
-    sessionKontrol();
+
+    sessionKontrol(); // Fonksiyonu burada çağırmak şart!
   }, []);
 
   // Giriş
@@ -35,7 +40,7 @@ export function AuthProvider({ children }) {
     return res.data;
   };
 
-  // Kayıt - backend kayıttan sonra otomatik session başlatıyor
+  // Kayıt
   const kayitOl = async ({ ad, soyad, email, sifre, telefon }) => {
     const res = await api.post("/auth/register", { ad, soyad, email, sifre, telefon });
     setUser(res.data.user);
@@ -44,8 +49,11 @@ export function AuthProvider({ children }) {
 
   // Çıkış
   const cikisYap = async () => {
-    await api.post("/auth/logout");
-    setUser(null);
+    try {
+      await api.post("/auth/logout");
+    } finally {
+      setUser(null);
+    }
   };
 
   return (
