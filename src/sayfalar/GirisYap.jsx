@@ -13,8 +13,8 @@ export default function GirisYap() {
 
   // Ortam kontrolü için helper fonksiyon
   const getApiUrl = () => {
-    return window.location.hostname === "localhost" 
-      ? "http://localhost:3000" 
+    return window.location.hostname === "localhost"
+      ? "http://localhost:3005"
       : "https://esnaf.apps.srv.aykutdurgut.com.tr";
   };
 
@@ -166,14 +166,14 @@ export default function GirisYap() {
         </div>
 
         {/* Sosyal Giriş Butonları */}
-        <button 
+        <button
           style={s.socialBtn}
           onClick={() => window.location.href = `${getApiUrl()}/api/auth/google`}
         >
           Google ile Giriş Yap
         </button>
-        
-        <button 
+
+        <button
           style={s.socialBtn}
           onClick={() => window.location.href = `${getApiUrl()}/api/auth/facebook`}
         >

@@ -16,9 +16,9 @@ export default function SifremiUnuttum() {
       // Backend'deki forgot-password endpoint'ine istek atıyoruz
       console.log("Kod talep ediliyor:", email);
       setMesaj({ tip: 'basari', icerik: 'Doğrulama kodu e-postanıza gönderiliyor...' });
-      
+
       // Buraya gerçek API isteğini ekleyeceksin (Örn: axios.post('/api/auth/forgot-password', { email }))
-      
+
       setStep(2); // Simülasyon için doğrudan 2. adıma geçiyoruz
     } catch (err) {
       setMesaj({ tip: 'hata', icerik: 'E-posta gönderilemedi. Lütfen tekrar deneyin.' });
@@ -30,9 +30,9 @@ export default function SifremiUnuttum() {
     e.preventDefault();
     try {
       console.log("Şifre sıfırlanıyor:", { email, kod, yeniSifre });
-      
+
       // Buraya gerçek API isteğini ekleyeceksin (Örn: axios.post('/api/auth/reset-password', { email, kod, yeniSifre }))
-      
+
       setMesaj({ tip: 'basari', icerik: 'Şifreniz başarıyla değiştirildi! Giriş sayfasına yönlendiriliyorsunuz.' });
       setTimeout(() => navigate('/giris-yap'), 3000);
     } catch (err) {
@@ -56,9 +56,9 @@ export default function SifremiUnuttum() {
     <div style={styles.wrapper}>
       <div style={styles.card}>
         <h1 style={styles.title}>Şifre Sıfırlama</h1>
-        
+
         {mesaj.icerik && (
-          <div style={{...styles.alert, backgroundColor: mesaj.tip === 'basari' ? '#e8f5e9' : '#ffebee', color: mesaj.tip === 'basari' ? '#2e7d32' : '#c62828'}}>
+          <div style={{ ...styles.alert, backgroundColor: mesaj.tip === 'basari' ? '#e8f5e9' : '#ffebee', color: mesaj.tip === 'basari' ? '#2e7d32' : '#c62828' }}>
             {mesaj.icerik}
           </div>
         )}
@@ -66,8 +66,8 @@ export default function SifremiUnuttum() {
         {step === 1 ? (
           <form onSubmit={handleRequestCode}>
             <p style={styles.text}>Kayıtlı e-posta adresinizi girin, size 6 haneli doğrulama kodunu gönderelim.</p>
-            <input 
-              type="email" placeholder="E-posta Adresiniz" style={styles.input} required 
+            <input
+              type="email" placeholder="E-posta Adresiniz" style={styles.input} required
               value={email} onChange={(e) => setEmail(e.target.value)}
             />
             <button type="submit" style={styles.button}>Doğrulama Kodu Gönder</button>
@@ -75,19 +75,19 @@ export default function SifremiUnuttum() {
         ) : (
           <form onSubmit={handleResetPassword}>
             <p style={styles.text}>E-postanıza gelen 6 haneli kodu ve yeni şifrenizi giriniz.</p>
-            
-            <input 
-              type="text" placeholder="6 Haneli Kod" style={{...styles.input, textAlign: 'center', letterSpacing: '5px', fontWeight: 'bold'}} 
+
+            <input
+              type="text" placeholder="6 Haneli Kod" style={{ ...styles.input, textAlign: 'center', letterSpacing: '5px', fontWeight: 'bold' }}
               maxLength="6" required value={kod} onChange={(e) => setKod(e.target.value)}
             />
-            
-            <input 
-              type="password" placeholder="Yeni Şifreniz" style={styles.input} required 
+
+            <input
+              type="password" placeholder="Yeni Şifreniz" style={styles.input} required
               value={yeniSifre} onChange={(e) => setYeniSifre(e.target.value)}
             />
-            
+
             <button type="submit" style={styles.button}>Şifreyi Güncelle</button>
-            <button type="button" onClick={() => setStep(1)} style={{...styles.button, backgroundColor: '#eee', color: '#5d4037', marginTop: '-10px'}}>Geri Dön</button>
+            <button type="button" onClick={() => setStep(1)} style={{ ...styles.button, backgroundColor: '#eee', color: '#5d4037', marginTop: '-10px' }}>Geri Dön</button>
           </form>
         )}
 
