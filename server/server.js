@@ -2,9 +2,9 @@ const express = require("express");
 const cors = require("cors");
 const session = require("express-session");
 const path = require("path");
-const passport = require("passport"); 
+const passport = require("passport");
 require("dotenv").config();
-require("./config/passport"); 
+require("./config/passport");
 
 const authRoutes = require("./routes/authRoutes");
 const categoryRoutes = require("./routes/categoryRoutes");
@@ -19,7 +19,7 @@ const app = express();
 
 // --- EKLEME 1: TRUST PROXY ---
 // Sunucuda (apps.srv...) çalışırken çerezlerin güvenle iletilmesi için şarttır.
-app.set("trust proxy", 1); 
+app.set("trust proxy", 1);
 
 console.log("weatherRoutes yüklendi");
 
@@ -73,6 +73,14 @@ app.use("/api/products", productRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/addresses", addressRoutes);
+
+app.get("/api/settings", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Ayarlar başarıyla getirildi",
+    data: {}
+  });
+});
 
 app.listen(process.env.PORT, () => {
   console.log(`API ${process.env.PORT} portunda çalışıyor`);
